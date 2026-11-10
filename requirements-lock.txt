@@ -1,0 +1,13 @@
+bottle==0.13.4
+cffi==2.1.1
+clr_loader==0.3.1
+MaaAgentBinary==1.0.1
+MaaFw==5.14.3
+numpy==2.5.4
+pillow==13.0.0
+proxy_tools==0.1.0
+pycparser==3.12
+pythonnet==3.2.1
+pywebview==6.2.1
+StrEnum==0.4.15
+typing_extensions==4.16.0

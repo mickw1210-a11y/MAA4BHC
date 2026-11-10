@@ -1,0 +1,16 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+.tools/
+.cache/
+.vscode/
+runtime/
+data/
+third_party/
+ui/node_modules/
+ui/dist/
+
+# 暂不提交，待逐项核查
+docs/
+assets/ocr/zh_cn/
