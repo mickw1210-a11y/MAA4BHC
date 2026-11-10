@@ -14,3 +14,7 @@ ui/dist/
 # 暂不提交，待逐项核查
 docs/
 assets/ocr/zh_cn/
+
+# 本地角色数据与导出
+/chars/
+/exports/
