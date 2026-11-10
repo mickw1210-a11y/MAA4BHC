@@ -1,8 +1,9 @@
-<p align="center">
+<div align="center">
   <img src="assets/logo.png" alt="MAA4BHC Logo" width="700">
-</p>
 
-# MAA For SSBHC
+  <h1>MAA For SSBHC</h1>
+  <p>时尚百货城自动养号助手，让百货老板少做重复操作，把时间留给更重要的事。</p>
+</div>
 
 虽然，恨的番茄在 2026 年 9 月 20 日的热更新里加入了“小助理”的功能，但是 Michael 有充足的理由相信，有很多百货老板在同时玩多个账号，或者出于学业或工作的原因无法天天上号，时时刻刻在线。
 
