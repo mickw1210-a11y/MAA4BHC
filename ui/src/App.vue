@@ -372,7 +372,7 @@ onBeforeUnmount(() => {
         <button class="primary" data-action="finish-inventory" :disabled="state.busy || inventoryBusy || !validRows || editing >= 0 || inlineIndex >= 0 || inventory.phase === 'completed' || (inventory.capture_mode === 'automatic' && !state.auto_capture?.capture_complete) || (!confirmed && inventory.phase === 'draft')" @click="inventoryAct('finish', true)">{{ inventory.phase === 'exported' ? 'CSV已保存，重试清理临时截图' : '完成：保存CSV并删除本次临时截图' }}</button>
         <p class="hint csv-location" :title="inventory.csv_path">CSV：{{ inventory.csv_path || 'data/背包道具统计.csv' }}</p>
         <p v-if="inventory.phase === 'completed' || inventoryNotice" class="hint">{{ inventoryNotice || '本次记录已完成，CSV已保存，临时截图已清理。' }}</p>
-        <div class="developer-reset"><button data-action="reset-inventory" title="清空本轮记录与临时图，保留历史/参考图/已导出CSV；也可双击根目录的重置识别记录.cmd。" :disabled="!ready || inventoryBusy || inlineIndex >= 0" @click="inventoryAct('reset')">开发重置：清空本轮记录和截图</button></div>
+        <div class="developer-reset"><button data-action="reset-inventory" title="清空本轮记录与临时图，保留历史/参考图/已导出CSV；也可双击根目录的reset-inventory.cmd。" :disabled="!ready || inventoryBusy || inlineIndex >= 0" @click="inventoryAct('reset')">开发重置：清空本轮记录和截图</button></div>
       </section>
       <section class="panel preview">
         <h2>本次截图组（{{ shotGroups.length }}）</h2>
