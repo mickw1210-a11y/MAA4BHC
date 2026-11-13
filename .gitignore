@@ -19,6 +19,28 @@ assets/ocr/zh_cn/
 /chars/
 /exports/
 
-# 本机资料和实际连接配置
-/.local/
+# .local 只提交明确列出的空目录标记，其余内容保持本机私有
+/.local/*
+!/.local/backups/
+/.local/backups/*
+!/.local/backups/.gitkeep
+!/.local/history/
+/.local/history/*
+!/.local/history/.gitkeep
+!/.local/docs/
+/.local/docs/*
+!/.local/docs/.gitkeep
+!/.local/data/
+/.local/data/*
+!/.local/data/.gitkeep
+!/.local/logs/
+/.local/logs/*
+!/.local/logs/.gitkeep
+!/.local/exports/
+/.local/exports/*
+!/.local/exports/.gitkeep
+!/.local/config/
+/.local/config/*
+!/.local/config/.gitkeep
+
 /config/settings.json
