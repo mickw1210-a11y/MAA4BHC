@@ -18,3 +18,7 @@ assets/ocr/zh_cn/
 # 本地角色数据与导出
 /chars/
 /exports/
+
+# 本机资料和实际连接配置
+/.local/
+/config/settings.json

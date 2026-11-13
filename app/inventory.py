@@ -35,7 +35,7 @@ class ManualInventory:
             raise ValueError("会话必须保存在项目内")
         self.images = self.directory / "screenshots"
         self.session = self.directory / "session.json"
-        self.output = Path(output).resolve() if output else self.root / "data/背包道具统计.csv"
+        self.output = Path(output).resolve() if output else self.root / "data/inventory.csv"
         if not self.output.is_relative_to(self.root):
             raise ValueError("CSV必须保存在项目内")
         self.rows = []
@@ -57,8 +57,17 @@ class ManualInventory:
             self.export_intent = state.get("export_intent")
             self.capture_files = state.get("capture_files", [])
             self.capture_mode = state.get("capture_mode", "automatic" if (self.directory / "progress.json").exists() else "manual")
+            if output is None and state.get("csv_path"):
+                previous_output = (self.root / state["csv_path"]).resolve()
+                if not previous_output.is_relative_to(self.root):
+                    raise ValueError("会话中的CSV路径超出项目，已停止加载")
+                self.output = previous_output
         elif self.session.with_suffix(".tmp").exists():
             raise ValueError("发现未完成保存的草稿.tmp，已停止以防覆盖；请先恢复核查")
+        # Existing default CSV remains protected; never rename or import it.
+        legacy_output = self.root / "data/背包道具统计.csv"
+        if output is None and (not self.session.exists() or not state.get("csv_path")) and legacy_output.exists():
+            self.output = legacy_output
         self._persisted = self.snapshot()
 
     def _legacy_groups(self):

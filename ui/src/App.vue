@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { isSelectionControl, rowsInRect, selectionRect, selectRectangle, selectRow } from './inventorySelection.js'
+import { reviewCounts, matchingGroup, previewWarning as getPreviewWarning, finishBlockReason as getFinishBlockReason, previewIsCurrent } from './inventoryReview.js'
 
 const state = ref({ status: 'disconnected', message: '正在打开', busy: false, stopped: false, offline: false, frame: null })
 const form = reactive({ adb_path: '', address: '', x: 0, y: 0, x2: 0, y2: 0, duration: 300 })
@@ -21,11 +22,18 @@ let inlineSaving = false
 const selectedShot = ref('')
 const currentReport = computed(() => inventory.value.ocr_reports?.[selectedShot.value])
 const shotGroups = computed(() => (inventory.value.groups || []).filter(group => group.images.length))
-const validRows = computed(() => inventory.value.rows.filter(row => !row.invalid).length)
+const counts = computed(() => reviewCounts(inventory.value.rows))
+const validRows = computed(() => counts.value.valid)
+const duplicateRows = computed(() => counts.value.duplicate)
+const incompleteRows = computed(() => counts.value.incomplete)
 const tablePage = ref(0)
 const tablePages = computed(() => Math.max(1, Math.ceil(inventory.value.rows.length / 25)))
 const visibleRows = computed(() => inventory.value.rows.map((row, index) => ({ row, index })).slice(tablePage.value * 25, (tablePage.value + 1) * 25))
 const selectedGroupId = computed(() => shotGroups.value.find(group => group.images.includes(selectedShot.value))?.id || '')
+const previewWarning = computed(() => getPreviewWarning(
+  !!(inventoryImage.value || image.value), visibleRows.value.map(({ row }) => row),
+  shotGroups.value.find(value => value.id === selectedGroupId.value),
+))
 const editableInventory = computed(() => ready.value && !state.value.busy && !inventoryBusy.value && inventory.value.phase === 'draft')
 const selectedRows = ref(new Set())
 const selectionAnchor = ref(null)
@@ -115,6 +123,7 @@ let polling = false
 let closing = false
 let pendingActions = 0
 let lastFrame = ''
+let frameRevision = 0
 let lastResetVersion = 0
 const labels = { disconnected: '未连接', connecting: '连接中', connected: '已连接', stopped: '已停止', error: '需检查' }
 const canOperate = computed(() => ready.value && !state.value.offline && !state.value.busy && state.value.status === 'connected' && !state.value.stopped)
@@ -122,12 +131,23 @@ const canInput = computed(() => canOperate.value && !state.value.read_only && !!
 const connectionDisabled = computed(() => !ready.value || state.value.offline || state.value.busy || !form.adb_path || !form.address)
 const autoStarting = ref(false)
 const canAutoInventory = computed(() => !!state.value.inventory_automation && ready.value && !state.value.offline && !state.value.busy && !inventoryBusy.value && !autoStarting.value && inlineIndex.value < 0 && !!form.adb_path && !!form.address)
+const finishBlockReason = computed(() => getFinishBlockReason({
+  busy: state.value.busy || inventoryBusy.value,
+  phase: inventory.value.phase,
+  captureMode: inventory.value.capture_mode,
+  captureComplete: state.value.auto_capture?.capture_complete,
+  valid: validRows.value,
+  editing: editing.value >= 0 || inlineIndex.value >= 0,
+  incomplete: incompleteRows.value,
+  reports: inventory.value.ocr_reports,
+  confirmed: confirmed.value,
+}))
 const autoCaptureSummary = computed(() => {
   const capture = state.value.auto_capture
   if (!capture || typeof capture !== 'object') return ''
-  const phases = { running: '采集中', capturing: '截图中', scrolling: '翻页中', recognizing: '识别中', completed: '采集结束，待核对', review: '等待核对', stopped: '已停止', error: '需检查' }
+  const phases = { starting: '正在检查准备情况', rewinding: '正在返回背包顶部', running: '采集中', capturing: '正在截图和识别', scrolling: '正在翻页', recognizing: '正在识别', completed: '采集结束，请核对', review: '采集结束，请核对', stopped: '采集已停止', error: '采集遇到问题' }
   const pages = Array.isArray(capture.pages) ? capture.pages.length : capture.pages
-  return [phases[capture.phase] || capture.phase, pages !== undefined && pages !== null ? `已采集 ${pages} 页` : '', capture.message].filter(Boolean).join(' · ')
+  return [phases[capture.phase] || '正在处理，请查看下方提示', pages !== undefined && pages !== null ? `已采集 ${pages} 页` : '', capture.message].filter(Boolean).join(' · ')
 })
 async function startAutoInventory() {
   if (!canAutoInventory.value) return
@@ -146,8 +166,10 @@ async function refresh() {
   window.__m4bIdle = false
   try {
     const next = await window.pywebview.api.get_state(lastFrame)
+    if (error.value === '界面暂时无法连接程序，正在重试；若持续失败请重新打开') error.value = ''
     if (next.reset_version !== undefined && next.reset_version !== lastResetVersion) {
       lastResetVersion = next.reset_version
+      frameRevision += 1
       inventoryImage.value = ''; image.value = ''; lastFrame = ''; selectedShot.value = ''
       item.name = ''; item.quantity = ''; inlineIndex.value = -1; editing.value = -1
       confirmed.value = false; tablePage.value = 0
@@ -155,7 +177,10 @@ async function refresh() {
     }
     if (!ready.value) Object.assign(form, next.settings)
     if (next.frame?.data) {
+      frameRevision += 1
+      inventoryImage.value = ''
       image.value = next.frame.data
+      selectedShot.value = next.frame.inventory_shot || ''
       lastFrame = next.frame.frame_id
     }
     if (!next.frame) {
@@ -167,7 +192,6 @@ async function refresh() {
       if (next.inventory.rows.length > inventory.value.rows.length) tablePage.value = Math.floor((next.inventory.rows.length - 1) / 25)
       inventory.value = next.inventory
       tablePage.value = Math.min(tablePage.value, tablePages.value - 1)
-      if (next.frame?.data && next.frame.inventory_shot) selectedShot.value = next.frame.inventory_shot
       if (!next.inventory.rows.length && !next.inventory.screenshots.length) {
         inventoryImage.value = ''; selectedShot.value = ''
       }
@@ -175,7 +199,7 @@ async function refresh() {
     ready.value = true
     window.__m4bReady = true
   } catch {
-    error.value = '界面与程序的连接已中断，请关闭后重新打开'
+    error.value = '界面暂时无法连接程序，正在重试；若持续失败请重新打开'
   } finally {
     polling = false
     window.__m4bIdle = pendingActions === 0
@@ -184,11 +208,13 @@ async function refresh() {
 async function inventoryAct(action, ...args) {
   if (inventoryBusy.value || closing) return false
   inventoryBusy.value = true
+  const startingFrameRevision = frameRevision
   pendingActions += 1
   window.__m4bIdle = false
   error.value = ''
   try {
     const result = await window.pywebview.api.inventory_action(action, ...args)
+    if (action === 'preview' && !previewIsCurrent(startingFrameRevision, frameRevision)) return false
     if (!result.ok) { error.value = result.error; return false }
     inventory.value = result.inventory
     if (result.image) inventoryImage.value = result.image
@@ -219,12 +245,21 @@ async function inventoryAct(action, ...args) {
     window.__m4bIdle = pendingActions === 0 && !polling
   }
 }
+async function changeTablePage(nextPage) {
+  if (nextPage < 0 || nextPage >= tablePages.value || inlineIndex.value >= 0 || inventoryBusy.value || state.value.busy) return
+  tablePage.value = nextPage
+  const pageRows = inventory.value.rows.slice(nextPage * 25, (nextPage + 1) * 25)
+  const group = matchingGroup(pageRows, shotGroups.value)
+  inventoryImage.value = ''; image.value = ''; selectedShot.value = ''
+  if (group) await inventoryAct('preview', group.selected || group.images.at(-1))
+}
 async function viewGroup(groupId) {
   if (inlineIndex.value >= 0) return
   const group = shotGroups.value.find(value => value.id === groupId)
   if (!group) return
   const index = inventory.value.rows.findIndex(row => group.images.includes(row.grid_page))
   if (index >= 0) tablePage.value = Math.floor(index / 25)
+  inventoryImage.value = ''; image.value = ''; selectedShot.value = ''
   await inventoryAct('preview', group.selected || group.images.at(-1))
 }
 async function importScreenshot(event) {
@@ -338,7 +373,7 @@ onBeforeUnmount(() => {
           <p v-if="autoCaptureSummary" class="auto-capture-progress" data-testid="auto-capture-status" aria-live="polite" :title="autoCaptureSummary">{{ autoCaptureSummary }}</p>
         </div>
         <h2>按背包顺序记录 · 每页5×5＝25格</h2>
-        <p class="hint record-count">有效{{ validRows }}条 · 无效{{ inventory.rows.length - validRows }}条 · 活动及（待）合成道具不统计</p>
+        <p class="hint record-count">有效{{ validRows }}条 · 其中{{ incompleteRows }}条缺名称或数量 · 无效{{ inventory.rows.length - validRows }}条<span v-if="duplicateRows"> · 疑似重复{{ duplicateRows }}条（已排除，需核对）</span></p>
         <p v-if="state.inventory_capture" class="hint">识别失败自动重新截图、识别最多2次；期间请保持当前页不动。</p>
         <p class="hint exclusion-hint">活动道具和（待）合成道具暂不统计。数量按画面原样填写；翻页重复项不累加。</p>
         <form class="inventory-form" @submit.prevent="saveItem">
@@ -347,7 +382,7 @@ onBeforeUnmount(() => {
           <button class="primary" data-action="add-inventory" :disabled="!editableInventory">{{ editing < 0 ? '追加到末尾' : '保存该行' }}</button>
           <button v-if="editing >= 0" type="button" @click="editing = -1; item.name = ''; item.quantity = ''">取消修改</button>
         </form>
-        <div class="table-pagination"><button :disabled="tablePage === 0 || inlineIndex >= 0 || inventoryBusy || state.busy" @click="tablePage--">上一页</button><span>第{{ tablePage + 1 }} / {{ tablePages }}页 · 每页25条</span><button :disabled="tablePage >= tablePages - 1 || inlineIndex >= 0 || inventoryBusy || state.busy" @click="tablePage++">下一页</button></div>
+        <div class="table-pagination"><button :disabled="tablePage === 0 || inlineIndex >= 0 || inventoryBusy || state.busy" @click="changeTablePage(tablePage - 1)">上一页</button><span>第{{ tablePage + 1 }} / {{ tablePages }}页 · 每页25条</span><button :disabled="tablePage >= tablePages - 1 || inlineIndex >= 0 || inventoryBusy || state.busy" @click="changeTablePage(tablePage + 1)">下一页</button></div>
         <div class="selection-toolbar" data-testid="selection-toolbar">
           <span aria-live="polite">已选 {{ selectedRows.size }} 条</span>
           <button data-action="invalidate-selected" :disabled="!canSelectRows || !selectedValidCount" @click="markSelected(true)">标记无效</button>
@@ -360,17 +395,18 @@ onBeforeUnmount(() => {
             <tbody><tr v-for="({ row, index }) in visibleRows" :key="index" :data-row-index="index" :aria-selected="selectedRows.has(index)" :class="{ 'invalid-row': row.invalid, 'selected-row': selectedRows.has(index) }">
               <td class="selection-column"><input type="checkbox" :checked="selectedRows.has(index)" :aria-label="`选择第${index + 1}条`" :disabled="!canSelectRows" @click="selectOne(index, $event, true)"></td>
               <td>{{ index + 1 }}</td>
-              <td><input v-if="inlineIndex === index && inlineField === 'name'" v-model="inlineValue" data-testid="inline-editor" class="inline-editor" aria-label="修改道具名称" :disabled="inventoryBusy" @keydown.enter.prevent="saveCell" @keydown.esc.prevent="cancelCell" @blur="saveCell"><button v-else class="name-cell" title="点击修改名称" :disabled="!editableInventory || inlineIndex >= 0" @click="editCell(index, row, 'name')">{{ row.name || '待识别名称' }}</button></td>
-              <td>{{ row.quantity || '待核对' }}</td>
+              <td><input v-if="inlineIndex === index && inlineField === 'name'" v-model="inlineValue" data-testid="inline-editor" class="inline-editor" aria-label="修改道具名称" :disabled="inventoryBusy" @keydown.enter.prevent="saveCell" @keydown.esc.prevent="cancelCell" @blur="saveCell"><button v-else class="name-cell" :title="row.invalid_reason === 'duplicate' ? '疑似重复，已暂时排除；请对照截图核对名称和数量' : '点击修改名称'" :disabled="!editableInventory || inlineIndex >= 0" @click="editCell(index, row, 'name')">{{ row.name || '待识别名称' }}{{ row.invalid_reason === 'duplicate' ? '（疑似重复）' : '' }}</button></td>
+              <td>{{ row.quantity === '' || row.quantity == null ? '待核对' : row.quantity }}</td>
               <td class="row-actions"><input v-if="inlineIndex === index && inlineField === 'quantity'" v-model="inlineValue" data-testid="inline-editor" class="inline-editor" aria-label="修改道具数量" inputmode="decimal" :disabled="inventoryBusy" @keydown.enter.prevent="saveCell" @keydown.esc.prevent="cancelCell" @blur="saveCell"><button v-else :disabled="!editableInventory || inlineIndex >= 0 || row.invalid" @click="editCell(index, row)">修改</button><button :disabled="!editableInventory || inlineIndex >= 0" @click="removeItem(index)">{{ row.invalid ? '恢复' : '标记无效' }}</button></td>
             </tr></tbody>
           </table>
         <div v-if="marquee" class="selection-marquee" :style="marquee" aria-hidden="true"></div>
         <p v-if="!inventory.rows.length" class="hint">尚未记录道具。截图后本地识别；也可手动补记，草稿自动保存。</p>
         </div>
+        <p v-if="finishBlockReason && inventory.phase !== 'completed'" class="hint record-count" role="status">{{ finishBlockReason }}</p>
         <label class="confirmation"><input v-model="confirmed" type="checkbox" :disabled="!editableInventory || editing >= 0 || inlineIndex >= 0">我已完成本次记录，核对顺序和数量，并跳过活动及（待）合成道具。</label>
-        <button class="primary" data-action="finish-inventory" :disabled="state.busy || inventoryBusy || !validRows || editing >= 0 || inlineIndex >= 0 || inventory.phase === 'completed' || (inventory.capture_mode === 'automatic' && !state.auto_capture?.capture_complete) || (!confirmed && inventory.phase === 'draft')" @click="inventoryAct('finish', true)">{{ inventory.phase === 'exported' ? 'CSV已保存，重试清理临时截图' : '完成：保存CSV并删除本次临时截图' }}</button>
-        <p class="hint csv-location" :title="inventory.csv_path">CSV：{{ inventory.csv_path || 'data/背包道具统计.csv' }}</p>
+        <button class="primary" data-action="finish-inventory" :disabled="!!finishBlockReason" @click="inventoryAct('finish', true)">{{ inventory.phase === 'exported' ? 'CSV已保存，重试清理临时截图' : '完成：保存CSV并删除本次临时截图' }}</button>
+        <p class="hint csv-location" :title="inventory.csv_path">CSV：{{ inventory.csv_path || 'data/inventory.csv' }}</p>
         <p v-if="inventory.phase === 'completed' || inventoryNotice" class="hint">{{ inventoryNotice || '本次记录已完成，CSV已保存，临时截图已清理。' }}</p>
         <div class="developer-reset"><button data-action="reset-inventory" title="清空本轮记录与临时图，保留历史/参考图/已导出CSV；也可双击根目录的reset-inventory.cmd。" :disabled="!ready || inventoryBusy || inlineIndex >= 0" @click="inventoryAct('reset')">开发重置：清空本轮记录和截图</button></div>
       </section>
@@ -378,7 +414,8 @@ onBeforeUnmount(() => {
         <h2>本次截图组（{{ shotGroups.length }}）</h2>
         <label v-if="!state.inventory_capture" class="import-label">导入手动截图<input data-action="import-inventory" type="file" accept="image/png,image/jpeg" :disabled="!editableInventory" @change="importScreenshot"></label>
         <div class="shot-list"><select :value="selectedGroupId" :disabled="inventoryBusy || state.busy || inlineIndex >= 0" @change="viewGroup($event.target.value)"><option value="" disabled>选择截图组</option><option v-for="(group, index) in shotGroups" :key="group.id" :value="group.id">第{{ index + 1 }}组 · {{ group.images.length }}次识别{{ inventory.ocr_reports?.[group.selected]?.status === 'pending' ? ' · 待核对' : '' }}</option></select></div>
-        <div class="canvas"><img v-if="inventoryImage || image" :src="inventoryImage || image" alt="本次临时背包截图"><p v-else class="hint">{{ state.inventory_capture ? '连接后点击“截图并识别”，图片临时入库并自动OCR。' : '导入截图后对照填写名称和数量。' }}</p></div>
+        <p v-if="previewWarning" class="hint" role="status">{{ previewWarning }}</p>
+        <div class="canvas"><img v-if="inventoryImage || image" :src="inventoryImage || image" alt="本次临时背包截图"><p v-else class="hint">{{ shotGroups.length ? '尚未显示截图，请选择截图组核对。' : (state.inventory_automation ? '开始采集后，这里会显示背包截图。' : state.inventory_capture ? '连接后点击“截图并识别”，这里会显示截图。' : '导入截图后，对照填写名称和数量。') }}</p></div>
         <p v-if="currentReport" class="hint">{{ currentReport.message }}</p>
         <button v-if="currentReport?.status === 'pending'" :disabled="!editableInventory || editing >= 0" @click="inventoryAct('review', selectedShot)">本图已手动补记或确认跳过</button>
       </section>

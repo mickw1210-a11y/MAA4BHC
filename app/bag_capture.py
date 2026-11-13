@@ -23,7 +23,7 @@ class BagCollector:
         self.directory = self.root / "runtime/auto-inventory" / name
         self.directory.mkdir(parents=True)
         self.inventory = ManualInventory(self.root, directory=self.directory,
-                                         output=self.directory / "背包道具统计.csv")
+                                         output=self.directory / "inventory.csv")
         self.device = device
         self.ocr = ocr or LocalOcr()
         self.notify = notify or (lambda state, inventory, frame: None)
