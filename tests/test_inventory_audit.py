@@ -151,6 +151,33 @@ class InventoryAuditTests(unittest.TestCase):
         self.assertEqual(self.inventory.rows[0]['quantity'], '1')
         self.assertEqual(self.inventory.session.read_bytes(), before)
 
+    @unittest.skipUnless(__import__('os').name == 'nt', 'Windows-specific sharing errors')
+    def test_transient_windows_replace_failure_recovers_without_losing_draft(self):
+        self.inventory.add('甲', '1')
+        original = Path.replace
+        attempts = []
+        def replace(path, target):
+            attempts.append(1)
+            if len(attempts) < 3:
+                raise PermissionError(13, 'fixture temporary denial', None, 5)
+            return original(path, target)
+        with patch.object(Path, 'replace', replace), patch('app.inventory.time.sleep'):
+            self.inventory.update_cell(0, 'quantity', '2')
+        self.assertEqual(len(attempts), 3)
+        self.assertEqual(ManualInventory(self.inventory.root).rows[0]['quantity'], '2')
+
+    @unittest.skipUnless(__import__('os').name == 'nt', 'Windows-specific sharing errors')
+    def test_persistent_windows_replace_failure_preserves_old_draft(self):
+        self.inventory.add('甲', '1')
+        before = self.inventory.session.read_bytes()
+        error = PermissionError(13, 'fixture persistent denial', None, 5)
+        with patch.object(Path, 'replace', side_effect=error) as replace, patch('app.inventory.time.sleep'):
+            with self.assertRaises(PermissionError):
+                self.inventory.update_cell(0, 'quantity', '2')
+        self.assertEqual(replace.call_count, 4)
+        self.assertEqual(self.inventory.rows[0]['quantity'], '1')
+        self.assertEqual(self.inventory.session.read_bytes(), before)
+
     def test_import_session_save_failure_removes_new_file_and_rolls_back_group(self):
         self.inventory.add('甲', '1')
         before = self.inventory.snapshot()

@@ -1,7 +1,50 @@
 import unittest
+import subprocess
 from pathlib import Path
 from unittest.mock import Mock, patch
 from app.device import MaaDevice
+
+
+class AdbConnectionTests(unittest.TestCase):
+    class Token:
+        def check(self): pass
+        def dispatch(self, action): return action()
+
+    def test_success_requires_adb_to_report_target_connected(self):
+        address = '127.0.0.1:12345'
+        for message in (f'connected to {address}', f'already connected to {address}'):
+            process = Mock(returncode=0)
+            process.communicate.return_value = (message.encode(), b'')
+            with patch('app.device.subprocess.Popen', return_value=process) as launch:
+                MaaDevice._connect_adb(Path('adb.exe'), address, self.Token())
+            self.assertEqual(launch.call_args.args[0], ['adb.exe', 'connect', address])
+
+    def test_failed_or_ambiguous_output_does_not_proceed(self):
+        for code, output in ((0, b'failed to connect'), (1, b'connected to 127.0.0.1:12345'),
+                             (0, b'connected to 127.0.0.1:9999')):
+            process = Mock(returncode=code)
+            process.communicate.return_value = (output, b'')
+            with patch('app.device.subprocess.Popen', return_value=process):
+                with self.assertRaises(RuntimeError):
+                    MaaDevice._connect_adb(Path('adb.exe'), '127.0.0.1:12345', self.Token())
+
+    def test_timeout_kills_and_drains_process(self):
+        process = Mock()
+        process.communicate.side_effect = [subprocess.TimeoutExpired('adb', 8), (b'', b'')]
+        with patch('app.device.subprocess.Popen', return_value=process):
+            with self.assertRaisesRegex(RuntimeError, '超时'):
+                MaaDevice._connect_adb(Path('adb.exe'), '127.0.0.1:12345', self.Token())
+        process.kill.assert_called_once()
+        self.assertEqual(process.communicate.call_count, 2)
+
+    def test_stop_after_connection_prevents_followup(self):
+        process = Mock(returncode=0)
+        process.communicate.return_value = (b'connected to 127.0.0.1:12345', b'')
+        token = self.Token()
+        token.check = Mock(side_effect=RuntimeError('stopped'))
+        with patch('app.device.subprocess.Popen', return_value=process):
+            with self.assertRaisesRegex(RuntimeError, 'stopped'):
+                MaaDevice._connect_adb(Path('adb.exe'), '127.0.0.1:12345', token)
 
 
 class DisplaySelectionTests(unittest.TestCase):

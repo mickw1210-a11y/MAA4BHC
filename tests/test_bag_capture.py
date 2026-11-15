@@ -1,6 +1,8 @@
 import json
+import os
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -93,6 +95,72 @@ class BagCaptureTests(unittest.TestCase):
         self.assertFalse(self.collector.status["capture_complete"])
         self.assertEqual(self.collector.status["phase"], "stopped")
         self.assertFalse(self.collector.inventory.output.exists())
+        saved = json.loads((self.collector.directory / 'progress.json').read_text(encoding='utf-8'))
+        self.assertIsNotNone(datetime.fromisoformat(saved['capture_started_at']).utcoffset())
+        self.assertIsNotNone(datetime.fromisoformat(saved['capture_ended_at']).utcoffset())
+        self.assertLessEqual(datetime.fromisoformat(saved['capture_started_at']),
+                             datetime.fromisoformat(saved['capture_ended_at']))
+        self.assertFalse(saved['capture_complete'])
+
+    def test_completed_ordinary_tab_saves_capture_interval(self):
+        self.collector._capture = Mock(return_value=(Path('initial.png'), {}))
+        self.collector._move = Mock(side_effect=[(Path('top.png'), 0, True), (Path('bottom.png'), 0, True)])
+        self.collector._record = Mock(return_value=Path('recorded.png'))
+        self.collector.run(Token())
+        saved = json.loads((self.collector.directory / 'progress.json').read_text(encoding='utf-8'))
+        self.assertTrue(saved['capture_complete'])
+        self.assertEqual(saved['phase'], 'review')
+        self.assertLessEqual(datetime.fromisoformat(saved['capture_started_at']),
+                             datetime.fromisoformat(saved['capture_ended_at']))
+        self.assertIsNotNone(datetime.fromisoformat(saved['capture_ended_at']).utcoffset())
+
+    def test_start_time_is_persisted_before_first_device_capture(self):
+        def first_capture(*_):
+            saved = json.loads((self.collector.directory / 'progress.json').read_text(encoding='utf-8'))
+            self.assertIsNotNone(saved['capture_started_at'])
+            self.assertIsNone(saved['capture_ended_at'])
+            self.assertFalse(saved['capture_complete'])
+            raise OperationCancelled('模拟停止')
+        self.collector._capture = Mock(side_effect=first_capture)
+        with self.assertRaises(OperationCancelled):
+            self.collector.run(Token())
+
+    def test_start_time_save_failure_stops_before_device_capture(self):
+        self.collector._save_progress = Mock(side_effect=OSError('模拟保存失败'))
+        self.collector._capture = Mock()
+        with self.assertRaises(OSError):
+            self.collector.run(Token())
+        self.collector._capture.assert_not_called()
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows sharing behavior')
+    def test_progress_save_retries_transient_windows_sharing_failure(self):
+        original = Path.replace
+        attempts = []
+        def replace(path, destination):
+            attempts.append(1)
+            if len(attempts) < 3:
+                raise PermissionError(13, 'fixture temporary denial', None, 5)
+            return original(path, destination)
+        with patch.object(Path, 'replace', autospec=True, side_effect=replace), patch('app.inventory.time.sleep'):
+            self.collector._save_progress()
+        self.assertEqual(len(attempts), 3)
+        self.assertEqual(json.loads((self.collector.directory / 'progress.json').read_text(encoding='utf-8'))['phase'], 'starting')
+
+    def test_review_status_write_failure_does_not_claim_success(self):
+        self.collector._capture = Mock(return_value=(Path('initial.png'), {}))
+        self.collector._move = Mock(side_effect=[(Path('top.png'), 0, True), (Path('bottom.png'), 0, True)])
+        self.collector._record = Mock(return_value=Path('recorded.png'))
+        publish = self.collector._publish
+        def fail_review(phase, message):
+            if phase == 'review':
+                raise OSError('模拟写入失败')
+            return publish(phase, message)
+        self.collector._publish = Mock(side_effect=fail_review)
+        with self.assertRaises(OSError):
+            self.collector.run(Token())
+        saved = json.loads((self.collector.directory / 'progress.json').read_text(encoding='utf-8'))
+        self.assertFalse(saved['capture_complete'])
+        self.assertEqual(saved['phase'], 'error')
 
     def test_overlapping_scroll_captures_complete_text_without_requiring_whole_icons(self):
         tokens = [{'text': '测试道具', 'score': .99,

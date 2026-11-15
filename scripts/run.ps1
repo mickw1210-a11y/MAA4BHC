@@ -1,4 +1,4 @@
-param([switch]$Offline, [switch]$SmokeTest, [switch]$ManualInventory, [switch]$ReadOnly, [switch]$InventoryCapture)
+﻿param([switch]$Offline, [switch]$SmokeTest, [switch]$ManualInventory, [switch]$ReadOnly, [switch]$InventoryCapture)
 . (Join-Path $PSScriptRoot 'project-env.ps1')
 Set-Location -LiteralPath $ProjectRoot
 $ProjectPython = Join-Path $ProjectRoot '.venv/Scripts/python.exe'

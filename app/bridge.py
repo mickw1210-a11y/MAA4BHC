@@ -268,7 +268,7 @@ class Bridge:
                 x, y, width, height = CONTENT_ROI
                 source = source.crop((x, y, x + width, y + height))
             small = source.convert("L").resize((64, 96)).filter(ImageFilter.GaussianBlur(.7))
-            return size, tuple(small.getdata())
+            return size, tuple(small.tobytes())
 
     @staticmethod
     def _same_inventory_frame(first, second):

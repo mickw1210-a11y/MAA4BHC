@@ -6,12 +6,26 @@ import hashlib
 import io
 import json
 import re
+import time
 from pathlib import Path
 from uuid import uuid4
 
 from PIL import Image
 
 from .config import ROOT
+
+
+def _replace_session(temporary, session):
+    # Windows may briefly deny replacement while another process has the file
+    # open. Keep the existing draft intact if a short bounded retry fails.
+    for attempt in range(4):
+        try:
+            temporary.replace(session)
+            return
+        except OSError as error:
+            if getattr(error, 'winerror', None) not in (5, 32) or attempt == 3:
+                raise
+            time.sleep(0.01)
 
 
 def active_inventory_paths(root=ROOT):
@@ -177,7 +191,7 @@ class ManualInventory:
         try:
             self.directory.mkdir(parents=True, exist_ok=True)
             temporary.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-            temporary.replace(self.session)
+            _replace_session(temporary, self.session)
         except OSError:
             saved = copy.deepcopy(self._persisted)
             self.rows, self.shots, self.phase = saved["rows"], saved["screenshots"], saved["phase"]

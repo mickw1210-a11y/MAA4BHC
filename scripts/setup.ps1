@@ -1,4 +1,4 @@
-param([string]$Python = 'python')
+﻿param([string]$Python = 'python')
 . (Join-Path $PSScriptRoot 'project-env.ps1')
 Set-Location -LiteralPath $ProjectRoot
 $ProjectPython = Join-Path $ProjectRoot '.venv/Scripts/python.exe'

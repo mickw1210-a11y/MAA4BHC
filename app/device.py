@@ -46,6 +46,7 @@ class MaaDevice:
 
         if not Toolkit.init_option(RUNTIME / "framework"):
             raise RuntimeError("MaaFramework本地初始化失败")
+        self._connect_adb(path, address, token)
         screen_config = self._screen_config(path, address, token)
         if self._read_only:
             controller = token.dispatch(lambda: AdbController(
@@ -63,6 +64,23 @@ class MaaDevice:
         self._controller = controller
         self._capture_target = (path, address, screen_config)
         return {"message": "已连接；请先截图核对页面"}
+
+    @staticmethod
+    def _connect_adb(path, address, token):
+        process = token.dispatch(lambda: subprocess.Popen(
+            [str(path), "connect", address], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        ))
+        try:
+            output, _ = process.communicate(timeout=8)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate()
+            raise RuntimeError("连接模拟器超时，请检查模拟器后重试") from None
+        token.check()
+        result = output.decode("utf-8", errors="replace").strip().lower()
+        if process.returncode or result not in (f"connected to {address}", f"already connected to {address}"):
+            raise RuntimeError("无法连接模拟器，请检查地址和模拟器状态")
 
     @staticmethod
     def _select_game_display(windows, displays):

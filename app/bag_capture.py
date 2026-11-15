@@ -11,7 +11,7 @@ from PIL import Image
 
 from .bag_alignment import estimate_vertical_shift
 from .config import ROOT
-from .inventory import ManualInventory
+from .inventory import ManualInventory, _replace_session
 from .ocr import LocalOcr
 from .worker import OperationCancelled
 
@@ -30,7 +30,7 @@ class BagCollector:
         self.pause = pause or self._pause
         self.status = {"phase": "starting", "pages": 0, "message": "检查背包与分辨率",
                        "directory": self.directory.relative_to(self.root).as_posix(),
-                       "capture_complete": False}
+                       "capture_complete": False, "capture_started_at": None, "capture_ended_at": None}
         self.actions = []
         self.number = 0
         self.frame = None
@@ -42,12 +42,15 @@ class BagCollector:
             token.check()
             time.sleep(min(.05, max(0, end - time.monotonic())))
 
-    def _publish(self, phase, message):
-        self.status.update(phase=phase, message=message)
+    def _save_progress(self):
         state = {**self.status, "actions": self.actions}
         temporary = self.directory / "progress.tmp"
         temporary.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-        temporary.replace(self.directory / "progress.json")
+        _replace_session(temporary, self.directory / "progress.json")
+
+    def _publish(self, phase, message):
+        self.status.update(phase=phase, message=message)
+        self._save_progress()
         self.notify(dict(self.status), self.inventory, self.frame)
 
     def _capture(self, token, label):
@@ -185,7 +188,11 @@ class BagCollector:
         return path
 
     def run(self, token):
+        self.status["capture_started_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
         try:
+            # Persist the real start before any capture; this does not activate
+            # or replace the user's currently selected inventory session.
+            self._save_progress()
             path, _ = self._capture(token, "initial")
             self._assert_bag(path, token)
             self._activate()
@@ -203,13 +210,18 @@ class BagCollector:
                 if endpoint:
                     self._record(token, path, tail=True)
                     self.status["capture_complete"] = True
+                    self.status["capture_ended_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
                     self._publish("review", "已确认底部，自动截图完成；识别结果待核对，未自动导出或清图")
                     return self.frame
             raise RuntimeError("采集超过30页上限，已停止，不能视为全背包完成")
         except OperationCancelled:
+            self.status["capture_complete"] = False
+            self.status["capture_ended_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
             self._publish("stopped", "自动采集已停止；本次未完成，截图及记录保留")
             raise
         except Exception as error:
+            self.status["capture_complete"] = False
+            self.status["capture_ended_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
             self._publish("error", str(error))
             raise
 
