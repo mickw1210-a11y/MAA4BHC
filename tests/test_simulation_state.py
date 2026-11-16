@@ -1,7 +1,9 @@
 import json
 import unittest
+from datetime import datetime, timezone
 
 from app.minigames.simulation_state import SimulationRandomInput, SimulationState
+from app.observation import Observation, ObservedValue
 from app.strategy_contract import LogicalAction
 
 
@@ -23,6 +25,35 @@ class SimulationStateTests(unittest.TestCase):
         self.assertEqual(state.fingerprint, restored.fingerprint)
         self.assertEqual(json.loads(state.canonical_json), state.to_dict())
         self.assertEqual(list(state.state_data["nested"]["values"]), [1, 2])
+
+    def test_trial_copy_is_detached_and_strategy_payload_cannot_mutate_observation(self):
+        observation = Observation(
+            observed_at=datetime(2026, 11, 16, 12, 0, tzinfo=timezone.utc),
+            device_id=ObservedValue.observed("fixture-device"),
+            character_id=ObservedValue.unknown("not_read"),
+            activity_id=ObservedValue.unknown("not_read"),
+            rules_version=ObservedValue.unknown("not_verified"),
+            frame_id=ObservedValue.observed("frame-1"),
+            page_id=ObservedValue.observed("page-1"),
+            board=ObservedValue.observed({"slots": [[1, None], [2, 3]]}),
+            energy=ObservedValue.unknown("not_read"),
+        )
+        original_observation = observation.to_dict()
+        state = self.make_state({"observation": original_observation})
+        trial = state.copy_for_trial()
+
+        self.assertIsNot(trial, state)
+        self.assertIsNot(trial.state_data, state.state_data)
+        self.assertIsNot(trial.state_data["observation"], state.state_data["observation"])
+        self.assertEqual(trial.fingerprint, state.fingerprint)
+        with self.assertRaises(TypeError):
+            trial.state_data["observation"]["page_id"] = {"known": True, "value": "changed"}
+
+        strategy_payload = trial.to_dict()["state_data"]
+        strategy_payload["observation"]["board"]["value"]["slots"][0][0] = "trial-only"
+        self.assertEqual(observation.to_dict(), original_observation)
+        self.assertEqual(state.to_dict()["state_data"]["observation"], original_observation)
+        self.assertEqual(trial.to_dict()["state_data"]["observation"], original_observation)
 
     def test_unknown_rule_version_cannot_be_simulated(self):
         for version in ("unknown", "unverified", "未知", " "):

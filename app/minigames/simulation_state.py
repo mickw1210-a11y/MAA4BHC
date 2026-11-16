@@ -112,6 +112,10 @@ class SimulationState:
             "state_data": _thaw_json(self.state_data),
         }
 
+    def copy_for_trial(self):
+        """Return a detached, immutable copy for one strategy trial."""
+        return type(self).from_dict(self.to_dict())
+
     @classmethod
     def from_dict(cls, data):
         expected = {"schema_version", "game_id", "rules_version", "state_schema", "state_data"}
