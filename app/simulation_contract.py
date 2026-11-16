@@ -2,20 +2,21 @@
 
 from typing import Protocol
 
+from app.minigames.simulation_state import SimulationRandomInput, SimulationState
 from app.strategy_contract import LogicalAction
 
 
 class SimulationRules(Protocol):
-    """Pure rules model; random input is explicit and limited to this step."""
+    """Pure game-specific rules model; random input is limited to this step."""
 
-    def legal_actions(self, state: object) -> tuple[LogicalAction, ...]:
+    def legal_actions(self, state: SimulationState) -> tuple[LogicalAction, ...]:
         ...
 
     def apply(
         self,
-        state: object,
+        state: SimulationState,
         action: LogicalAction,
         *,
-        random_input: object,
-    ) -> object:
+        random_input: SimulationRandomInput,
+    ) -> SimulationState:
         ...
