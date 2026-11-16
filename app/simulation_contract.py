@@ -4,6 +4,7 @@ from typing import Protocol
 
 from app.minigames.simulation_actions import ActionCandidate
 from app.minigames.simulation_state import SimulationRandomInput, SimulationState
+from app.minigames.simulation_transition import SimulationTransition
 
 
 class SimulationRules(Protocol):
@@ -18,5 +19,5 @@ class SimulationRules(Protocol):
         action: ActionCandidate,
         *,
         random_input: SimulationRandomInput,
-    ) -> SimulationState:
+    ) -> SimulationTransition:
         ...
