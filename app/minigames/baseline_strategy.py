@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from math import isfinite
 
-from app.minigames.simulation_state import SimulationState
+from app.minigames.strategy_observation import StrategyObservation
 from app.observation import ObservedValue
 from app.strategy_contract import LogicalAction, StrategyDecision
 
@@ -32,8 +32,8 @@ class DeterministicLegalActionBaseline:
     """Choose the lexically first supplied action; never sends or applies it."""
 
     def choose_action(self, *, state, legal_actions, budget):
-        if not isinstance(state, SimulationState):
-            raise TypeError("state必须是SimulationState")
+        if not isinstance(state, StrategyObservation):
+            raise TypeError("state必须是StrategyObservation")
         if not isinstance(legal_actions, tuple):
             raise TypeError("legal_actions必须是LogicalAction元组")
         if any(not isinstance(action, LogicalAction) for action in legal_actions):

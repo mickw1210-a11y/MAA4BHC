@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from app.observation import ObservedValue
+from app.minigames.strategy_observation import StrategyObservation
 
 
 def _require_text(value, field_name):
@@ -44,7 +45,7 @@ class Strategy(Protocol):
     def choose_action(
         self,
         *,
-        state: object,
+        state: StrategyObservation,
         legal_actions: tuple[LogicalAction, ...],
         budget: Mapping[str, ObservedValue],
     ) -> StrategyDecision:

@@ -2,6 +2,7 @@ import unittest
 
 from app.minigames.baseline_strategy import DeterministicLegalActionBaseline
 from app.minigames.simulation_state import SimulationState
+from app.minigames.strategy_observation import StrategyObservation
 from app.observation import ObservedValue
 from app.strategy_contract import LogicalAction, StrategyDecision
 
@@ -9,11 +10,11 @@ from app.strategy_contract import LogicalAction, StrategyDecision
 class DeterministicLegalActionBaselineTests(unittest.TestCase):
     def setUp(self):
         self.strategy = DeterministicLegalActionBaseline()
-        self.state = SimulationState(
+        self.state = StrategyObservation(
             game_id="candy-party",
             rules_version="fixture-v1",
-            state_schema="test-fixture.v1",
-            state_data={"step": 0},
+            observation_schema="test-observation.v1",
+            visible_fields={"step": ObservedValue.observed(0)},
         )
         self.budget = {"fixture-energy": ObservedValue.observed(3)}
         self.actions = (
@@ -70,9 +71,19 @@ class DeterministicLegalActionBaselineTests(unittest.TestCase):
         self.assertEqual(result.action, LogicalAction("match", "slot:1"))
 
     def test_rejects_invalid_state_or_action_shapes(self):
-        with self.assertRaisesRegex(TypeError, "SimulationState"):
+        with self.assertRaisesRegex(TypeError, "StrategyObservation"):
             self.strategy.choose_action(
                 state={}, legal_actions=self.actions, budget=self.budget,
+            )
+        full_state = SimulationState(
+            game_id="candy-party",
+            rules_version="fixture-v1",
+            state_schema="test-fixture.v1",
+            state_data={"hidden_future": [1, 2, 3]},
+        )
+        with self.assertRaisesRegex(TypeError, "StrategyObservation"):
+            self.strategy.choose_action(
+                state=full_state, legal_actions=self.actions, budget=self.budget,
             )
         with self.assertRaisesRegex(TypeError, "元组"):
             self.choose(actions=list(self.actions))
@@ -84,11 +95,11 @@ class DeterministicLegalActionBaselineTests(unittest.TestCase):
     def test_does_not_mutate_state_actions_or_budget(self):
         actions = self.actions
         budget = dict(self.budget)
-        state_fingerprint = self.state.fingerprint
+        initial_fields = dict(self.state.visible_fields.items())
         self.choose(actions=actions, budget=budget)
         self.assertEqual(actions, self.actions)
         self.assertEqual(budget, self.budget)
-        self.assertEqual(self.state.fingerprint, state_fingerprint)
+        self.assertEqual(dict(self.state.visible_fields.items()), initial_fields)
 
 
 if __name__ == "__main__":
