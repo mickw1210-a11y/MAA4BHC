@@ -12,16 +12,18 @@ logger = logging.getLogger("m4b")
 
 
 class Bridge:
-    def __init__(self, *, offline=False, read_only=False, manual_inventory=False, inventory_capture=False, device=None, worker=None):
+    def __init__(self, *, offline=False, read_only=False, manual_inventory=False, inventory_capture=False, task_home=False, device=None, worker=None):
+        self._task_home = task_home
         self._offline = offline or (manual_inventory and not inventory_capture)
         self._read_only = read_only or manual_inventory or inventory_capture
         self._inventory_capture = inventory_capture
+        self._inventory_automation = inventory_capture and not read_only
         self._manual_inventory = manual_inventory or inventory_capture
         self._inventory = ManualInventory(**active_inventory_paths(ROOT)) if self._manual_inventory else None
         self._ocr = None
         self._reset_requested = False
         self._reset_version = 0
-        self._device = device if device is not None else MaaDevice(read_only=self._read_only, allow_inventory_swipe=inventory_capture)
+        self._device = device if device is not None else MaaDevice(read_only=self._read_only, allow_inventory_swipe=self._inventory_automation)
         self._auto_capture = None
         self._worker = worker if worker is not None else SerialWorker()
         self._lock = RLock()
@@ -58,13 +60,18 @@ class Bridge:
                 "read_only": self._read_only,
                 "manual_inventory": self._manual_inventory,
                 "inventory_capture": self._inventory_capture,
-                "inventory_automation": self._inventory_capture,
+                "inventory_automation": self._inventory_automation,
+                "task_home": self._task_home,
                 "auto_capture": dict(self._auto_capture) if self._auto_capture else None,
                 "reset_version": self._reset_version,
                 "inventory": self._inventory.snapshot() if self._inventory else None,
                 "frame": frame,
                 "settings": self._settings,
             }
+
+    def check_readiness(self, adb_path, address):
+        from .preflight import check_local_readiness
+        return check_local_readiness(adb_path, address)
 
     def connect(self, adb_path, address):
         if self._offline:
@@ -73,7 +80,19 @@ class Bridge:
             MaaDevice.validate_connection(adb_path, address)
         except (ValueError, TypeError) as error:
             return {"ok": False, "error": str(error)}
-        return self._submit("connect", lambda token: self._device.connect(adb_path, address, token), resume=True)
+        return self._submit("connect", lambda token: self._connect_device(adb_path, address, token), resume=True)
+
+    def _connect_device(self, adb_path, address, token):
+        result = self._device.connect(adb_path, address, token)
+        token.check()
+        with self._lock:
+            self._settings = {"adb_path": str(adb_path), "address": str(address).strip()}
+        return result
+
+    def _needs_connection(self, adb_path, address):
+        return (self._status != "connected" or self._worker.stopped
+                or bool(adb_path and str(adb_path) != self._settings["adb_path"])
+                or bool(address and str(address).strip() != self._settings["address"]))
 
     def inventory_action(self, action, *args):
         with self._lock:
@@ -108,6 +127,26 @@ class Bridge:
             except Exception as error:
                 logger.exception("手动背包记录失败：%s", action)
                 return {"ok": False, "error": str(error)}
+
+    def inspect_device(self, adb_path="", address=""):
+        if self._offline:
+            return {"ok": False, "error": "离线检查模式不允许设备操作"}
+        reconnect = self._needs_connection(adb_path, address)
+        if reconnect:
+            adb_path = adb_path or self._settings["adb_path"]
+            address = address or self._settings["address"]
+            try:
+                MaaDevice.validate_connection(adb_path, address)
+            except (TypeError, ValueError) as error:
+                return {"ok": False, "error": str(error)}
+
+        def inspect(token):
+            if reconnect:
+                self._connect_device(adb_path, address, token)
+            token.check()
+            return self._device.screenshot(token, save=False)
+
+        return self._submit("inspect_device", inspect, resume=reconnect)
 
     def _process_reset(self):
         if not self._inventory:
@@ -155,9 +194,9 @@ class Bridge:
         return self._submit("screenshot", lambda token: self._device.screenshot(token))
 
     def auto_inventory(self, adb_path="", address=""):
-        if not self._inventory_capture or self._offline:
+        if not self._inventory_automation or self._offline:
             return {"ok": False, "error": "当前模式不支持自动背包采集"}
-        reconnect = self._status != "connected" or self._worker.stopped
+        reconnect = self._needs_connection(adb_path, address)
         if reconnect:
             adb_path = adb_path or self._settings["adb_path"]
             address = address or self._settings["address"]
@@ -168,7 +207,7 @@ class Bridge:
         def collect(token):
             from .bag_capture import BagCollector
             if reconnect:
-                self._device.connect(adb_path, address, token)
+                self._connect_device(adb_path, address, token)
             def notify(state, inventory, frame):
                 with self._lock:
                     self._auto_capture = state
@@ -264,7 +303,9 @@ class Bridge:
         from .ocr import CONTENT_ROI
         with Image.open(path) as source:
             size = source.size
-            if size == (630, 1120):
+            from .bag_geometry import SUPPORTED_SIZES, normalize_bag_image
+            if size in SUPPORTED_SIZES:
+                source = normalize_bag_image(source)
                 x, y, width, height = CONTENT_ROI
                 source = source.crop((x, y, x + width, y + height))
             small = source.convert("L").resize((64, 96)).filter(ImageFilter.GaussianBlur(.7))
@@ -339,8 +380,8 @@ class Bridge:
             except (RuntimeError, OperationCancelled) as error:
                 return {"ok": False, "error": str(error)}
             self._status = "connecting" if kind == "connect" else "connected"
-            self._message = {"connect": "正在连接", "screenshot": "正在截图", "click": "正在点击", "swipe": "正在滑动", "auto_inventory": "正在启动自动背包采集"}[kind]
-            if kind in ("connect", "screenshot", "click", "swipe"):
+            self._message = {"connect": "正在连接", "screenshot": "正在截图", "click": "正在点击", "swipe": "正在滑动", "auto_inventory": "正在启动自动背包采集", "inspect_device": "正在连接并读取游戏画面"}[kind]
+            if kind in ("connect", "screenshot", "click", "swipe", "inspect_device"):
                 self._frame = None
         future.add_done_callback(lambda result: self._completed(kind, result))
         return {"ok": True}
@@ -363,10 +404,14 @@ class Bridge:
                 if self._worker.stopped:
                     return
                 self._status = "connected"
-                if kind in ("screenshot", "auto_inventory"):
+                if kind in ("screenshot", "auto_inventory", "inspect_device"):
                     self._frame = result
-                    self._message = (self._auto_capture["message"] if kind == "auto_inventory" and self._auto_capture
-                                     else result.get("inventory_message", "截图已更新，请核对当前页面"))
+                    if kind == "auto_inventory" and self._auto_capture:
+                        self._message = self._auto_capture["message"]
+                    elif kind == "inspect_device":
+                        self._message = "画面已读取，请核对当前页面与分辨率"
+                    else:
+                        self._message = result.get("inventory_message", "截图已更新，请核对当前页面")
                 else:
                     self._message = result["message"]
             logger.info("操作完成：%s", kind)

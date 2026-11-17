@@ -1,4 +1,4 @@
-"""Bounded, local-only backpack scrolling for the locked 630x1120 layout."""
+"""Bounded backpack scrolling using reference coordinates for supported sizes."""
 import base64
 import json
 import time
@@ -10,6 +10,7 @@ import numpy as np
 from PIL import Image
 
 from .bag_alignment import estimate_vertical_shift
+from .bag_geometry import SUPPORTED_SIZES, normalize_bag_image
 from .config import ROOT
 from .inventory import ManualInventory, _replace_session
 from .ocr import LocalOcr
@@ -34,6 +35,7 @@ class BagCollector:
         self.actions = []
         self.number = 0
         self.frame = None
+        self.screen_size = None
 
     @staticmethod
     def _pause(seconds, token):
@@ -56,8 +58,13 @@ class BagCollector:
     def _capture(self, token, label):
         token.check()
         frame = self.device.screenshot(token, save=False)
-        if (frame["width"], frame["height"]) != (630, 1120):
-            raise RuntimeError("分辨率变化，自动操作已停止；只支持630×1120")
+        size = (frame["width"], frame["height"])
+        if size not in SUPPORTED_SIZES:
+            raise RuntimeError("背包采集支持630×1120和450×800，当前尺寸无法适配")
+        if self.screen_size is not None and self.screen_size != size:
+            raise RuntimeError("本轮分辨率变化，自动操作已停止")
+        self.screen_size = size
+        self.status["screen_size"] = list(size)
         self.number += 1
         path = self.directory / f"frame-{self.number:03d}-{label}.png"
         token.dispatch(lambda: path.write_bytes(base64.b64decode(frame["data"].split(",", 1)[1])))
@@ -67,11 +74,11 @@ class BagCollector:
         return path, frame
 
     def _assert_bag(self, path, token):
-        header = self.ocr.read(path, token, roi=(24, 0, 584, 150))
+        header = self.ocr.read(path, token, roi=(24, 0, 584, 150), bag_layout=True)
         if not any(value["score"] >= .9 and value["text"].strip() == "背包" for value in header):
             raise RuntimeError("未确认背包页面，已停止自动操作")
         with Image.open(path) as image:
-            pixels = np.asarray(image.convert("RGB"), dtype=float)
+            pixels = np.asarray(normalize_bag_image(image), dtype=float)
         votes = []
         for left in (24, 225, 415):
             tile = pixels[100:150, left:left + 175]
@@ -196,7 +203,7 @@ class BagCollector:
             path, _ = self._capture(token, "initial")
             self._assert_bag(path, token)
             self._activate()
-            self._publish("rewinding", "已锁定630×1120普通道具，正在返回顶部")
+            self._publish("rewinding", "已确认普通道具与画面尺寸，正在返回顶部")
             for _ in range(30):
                 path, _, endpoint = self._move(token, path, "down")
                 if endpoint:

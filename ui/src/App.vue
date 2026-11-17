@@ -8,6 +8,28 @@ const form = reactive({ adb_path: '', address: '', x: 0, y: 0, x2: 0, y2: 0, dur
 const error = ref('')
 const image = ref('')
 const ready = ref(false)
+const workspaceOpen = ref(false)
+const homeVisible = computed(() => !!state.value.task_home && !workspaceOpen.value)
+const selectedTask = ref('inspect')
+const sourceConfirmed = ref(false)
+const taskStarting = ref(false)
+const readinessChecks = ref([])
+const checkingReadiness = ref(false)
+watch(() => [form.adb_path, form.address], () => { readinessChecks.value = [] })
+async function checkReadiness() {
+  if (!ready.value || checkingReadiness.value) return
+  const inputs = [form.adb_path, form.address]
+  checkingReadiness.value = true
+  readinessChecks.value = []
+  try {
+    const result = await window.pywebview.api.check_readiness(...inputs)
+    if (inputs[0] === form.adb_path && inputs[1] === form.address) {
+      if (result.ok) readinessChecks.value = result.checks
+      else error.value = result.error
+    }
+  } catch { error.value = '本机准备检查失败，请重试' }
+  finally { checkingReadiness.value = false }
+}
 const inventory = ref({ rows: [], screenshots: [], phase: 'draft' })
 const item = reactive({ name: '', quantity: '' })
 const editing = ref(-1)
@@ -131,6 +153,28 @@ const canInput = computed(() => canOperate.value && !state.value.read_only && !!
 const connectionDisabled = computed(() => !ready.value || state.value.offline || state.value.busy || !form.adb_path || !form.address)
 const autoStarting = ref(false)
 const canAutoInventory = computed(() => !!state.value.inventory_automation && ready.value && !state.value.offline && !state.value.busy && !inventoryBusy.value && !autoStarting.value && inlineIndex.value < 0 && !!form.adb_path && !!form.address)
+const canStartTask = computed(() => ready.value && !taskStarting.value && !state.value.busy && (
+  selectedTask.value === 'review' || (!state.value.offline && !!form.adb_path && !!form.address && (
+    selectedTask.value === 'inspect' || (state.value.inventory_automation && sourceConfirmed.value)
+  ))
+))
+async function startSelectedTask() {
+  if (!canStartTask.value) return
+  taskStarting.value = true
+  try {
+    if (selectedTask.value === 'review') workspaceOpen.value = true
+    else if (selectedTask.value === 'inspect') await act('inspect_device', form.adb_path, form.address)
+    else {
+      workspaceOpen.value = true
+      await startAutoInventory()
+    }
+  } finally { taskStarting.value = false }
+}
+function returnToTasks() {
+  if (state.value.busy || inventoryBusy.value || inlineIndex.value >= 0 || editing.value >= 0) return
+  workspaceOpen.value = false
+  sourceConfirmed.value = false
+}
 const finishBlockReason = computed(() => getFinishBlockReason({
   busy: state.value.busy || inventoryBusy.value,
   phase: inventory.value.phase,
@@ -350,15 +394,45 @@ onBeforeUnmount(() => {
   <div class="shell" :class="{ 'inventory-shell': state.manual_inventory }">
     <header>
       <div><p class="eyebrow">MAA FOR BHC</p><h1>百货城小助手</h1></div>
+      <button v-if="state.task_home && !homeVisible" data-action="task-home" :disabled="state.busy || inventoryBusy || inlineIndex >= 0 || editing >= 0" @click="returnToTasks">任务首页</button>
       <span class="status" :class="state.status" data-testid="status">{{ state.manual_inventory ? '背包记录 · ' : '' }}{{ labels[state.status] || '未连接' }}</span>
       <button class="stop" data-action="stop" :disabled="!ready" @click="act('stop')">停止</button>
     </header>
-    <p v-if="state.inventory_automation" class="offline">背包采集 · 固定630×1120；自动浏览普通道具并截图，随时点击“停止”。</p>
+    <p v-if="homeVisible && state.offline" class="offline">离线检查 · 可继续校对本机记录</p>
+    <p v-else-if="homeVisible" class="offline">选择任务后点击开始</p>
+    <p v-else-if="state.inventory_automation" class="offline">普通道具采集 · 适配450×800和630×1120；随时点击“停止”。</p>
     <p v-else-if="state.inventory_capture" class="offline">手动背包统计 · 你操作游戏，点击“截图并识别”后临时入库、本地OCR；不点击或翻页。</p>
     <p v-else-if="state.manual_inventory" class="offline">手动背包统计 · 你操作游戏，本应用只记录，不发送设备指令。</p>
     <p v-else-if="state.offline" class="offline">离线检查 · 设备操作已禁用</p>
     <p v-else-if="state.read_only" class="offline">只读验证 · 仅连接和截图</p>
-    <div v-if="state.manual_inventory" class="manual-layout">
+    <details v-if="state.inventory_capture" class="readiness-panel">
+      <summary>本机准备检查</summary>
+      <div class="readiness-content">
+      <div class="readiness-controls"><button data-action="check-readiness" :disabled="!ready || checkingReadiness" @click="checkReadiness">{{ checkingReadiness ? '检查中…' : '检查配置与模型' }}</button><span>仅检查本机文件与配置，不连接模拟器。</span></div>
+      <ul v-if="readinessChecks.length" aria-live="polite"><li v-for="check in readinessChecks" :key="check.name" data-testid="readiness-check" :class="{ 'needs-attention': check.status === 'missing' }"><strong>{{ check.name }}</strong>：{{ check.message }}</li></ul>
+      </div>
+    </details>
+    <main v-if="homeVisible" class="task-home-layout" data-testid="task-home">
+      <section class="panel task-controls">
+        <h2>任务</h2>
+        <label class="task-option"><input v-model="selectedTask" type="radio" value="inspect" :disabled="state.busy"><span><strong>检查游戏画面</strong><small>连接模拟器并截图，查看当前页面和分辨率</small></span></label>
+        <label class="task-option"><input v-model="selectedTask" type="radio" value="inventory" :disabled="state.busy || !state.inventory_automation"><span><strong>采集普通道具</strong><small>{{ state.inventory_automation ? '回顶、逐页截图与识别，结束后进入校对' : '当前模式仅允许截图与人工校对' }}</small></span></label>
+        <label class="task-option"><input v-model="selectedTask" type="radio" value="review" :disabled="state.busy"><span><strong>继续校对</strong><small>{{ inventory.rows.length ? `已有 ${inventory.rows.length} 条记录` : '打开记录表，手动补记或查看草稿' }}</small></span></label>
+        <template v-if="selectedTask !== 'review'">
+          <label>ADB 路径<input v-model="form.adb_path" :disabled="state.busy" placeholder="MuMu adb.exe完整路径"></label>
+          <label>连接地址<input v-model="form.address" :disabled="state.busy" placeholder="127.0.0.1:端口"></label>
+        </template>
+        <label v-if="selectedTask === 'inventory'" class="confirmation"><input v-model="sourceConfirmed" type="checkbox" :disabled="state.busy">已将游戏停在普通道具页，可以开始自动滑动采集</label>
+        <button class="primary" data-action="start-task" :disabled="!canStartTask" @click="startSelectedTask">{{ state.busy ? '执行中…' : selectedTask === 'review' ? '打开校对' : '开始任务' }}</button>
+      </section>
+      <section class="panel preview">
+        <div class="preview-title"><h2>游戏画面</h2><span v-if="state.frame">{{ state.frame.width }} × {{ state.frame.height }}</span></div>
+        <div class="canvas"><img v-if="image" :src="image" alt="最近读取的游戏画面"><p v-else class="hint">运行“检查游戏画面”后显示截图。</p></div>
+        <p v-if="state.frame" class="hint">读取于 {{ state.frame.time }}</p>
+        <p v-if="state.frame && !((state.frame.width === 630 && state.frame.height === 1120) || (state.frame.width === 450 && state.frame.height === 800))" class="hint">当前自动采集支持450×800和630×1120，此画面可供查看和人工核对。</p>
+      </section>
+    </main>
+    <div v-else-if="state.manual_inventory" class="manual-layout">
       <section class="panel">
         <div v-if="state.inventory_capture" class="inventory-connection">
           <h2>连接与手动截图</h2>
@@ -368,7 +442,7 @@ onBeforeUnmount(() => {
           <p class="hint">OCR在中间区域逐图定位五排，半露卡片不计入；翻页由你操作。</p>
         </div>
         <div v-if="state.inventory_automation" class="auto-capture-panel">
-          <div class="auto-capture-controls"><button class="primary" data-action="auto-inventory" :disabled="!canAutoInventory" @click="startAutoInventory">{{ autoStarting ? '正在开始…' : '自动采集背包' }}</button><span>630×1120 · 普通道具</span></div>
+          <div class="auto-capture-controls"><button class="primary" data-action="auto-inventory" :disabled="!canAutoInventory" @click="startAutoInventory">{{ autoStarting ? '正在开始…' : '自动采集背包' }}</button><span>450×800 / 630×1120 · 普通道具</span></div>
           <p>自动滑动并截图；采集结束后待核对，不自动保存正式CSV或清理截图。</p>
           <p v-if="autoCaptureSummary" class="auto-capture-progress" data-testid="auto-capture-status" aria-live="polite" :title="autoCaptureSummary">{{ autoCaptureSummary }}</p>
         </div>

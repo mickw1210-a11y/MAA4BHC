@@ -94,6 +94,24 @@ class BagAlignmentTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             estimate_vertical_shift(path, path)
 
+    def test_450_scroll_uses_reference_displacement(self):
+        paths = [self.screen(0, 'small-before.png'), self.screen(157, 'small-after.png')]
+        for path in paths:
+            with Image.open(path) as source:
+                image = source.resize((450, 800), Image.Resampling.LANCZOS)
+            image.save(path)
+        result = estimate_vertical_shift(*paths)
+        self.assertTrue(result['reliable'], result)
+        self.assertAlmostEqual(result['shift'], 157, delta=2)
+
+    def test_resolution_change_is_not_a_scroll(self):
+        before = self.screen(0, 'before.png')
+        after = self.root / 'small.png'
+        with Image.open(before) as source:
+            source.resize((450, 800)).save(after)
+        with self.assertRaisesRegex(ValueError, '分辨率变化'):
+            estimate_vertical_shift(before, after)
+
 
 if __name__ == '__main__':
     unittest.main()

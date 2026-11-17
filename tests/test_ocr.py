@@ -311,7 +311,7 @@ class DynamicGeometryTests(unittest.TestCase):
             class Token:
                 def check(self): pass
             engine = LocalOcr()
-            def read(path, token, *, roi=None, only_rec=False, scale=None):
+            def read(path, token, *, roi=None, only_rec=False, scale=None, bag_layout=False):
                 calls.append((roi, only_rec, scale))
                 if roi == (24, 0, 584, 150):
                     return [globals()['token']('背包', 10)]
@@ -351,7 +351,7 @@ class DynamicGeometryTests(unittest.TestCase):
             class Token:
                 def check(self): pass
             engine = LocalOcr()
-            def read(path, token, *, roi=None, only_rec=False, scale=None):
+            def read(path, token, *, roi=None, only_rec=False, scale=None, bag_layout=False):
                 if roi == (24, 0, 584, 150): return [globals()['token']('背包', 10)]
                 if roi == CONTENT_ROI: return detections
                 if not only_rec:

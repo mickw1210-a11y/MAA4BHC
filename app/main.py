@@ -18,11 +18,14 @@ def main():
     parser.add_argument("--smoke-test", action="store_true", help="离线窗口与桥接检查后自动关闭")
     parser.add_argument("--read-only", action="store_true", help="仅允许连接与截图")
     parser.add_argument("--manual-inventory", action="store_true", help="手动背包统计，不发送设备指令")
-    parser.add_argument("--inventory-capture", action="store_true", help="手动截图入库并本地OCR；禁止游戏输入")
+    parser.add_argument("--inventory-capture", action="store_true", help="背包截图、本地OCR与受限自动滑动；启动时不连接设备")
+    parser.add_argument("--task-home", action="store_true", help="打开任务首页，可检查画面、采集背包或继续校对")
     parser.add_argument("--capture-check", action="store_true", help="执行获批的只读连接/截图及界面显示核查")
     parser.add_argument("--adb-path", default="")
     parser.add_argument("--address", default="")
     args = parser.parse_args()
+    if args.task_home:
+        args.inventory_capture = True
     if (args.manual_inventory or args.inventory_capture) and args.capture_check:
         parser.error("手动统计不能与设备截图核查同时使用")
     if args.capture_check and (args.offline or args.smoke_test or not args.adb_path or not args.address):
@@ -52,7 +55,8 @@ def main():
         if not inventory_lease.acquire():
             raise SystemExit("本项目已有背包记录窗口，请先关闭旧窗口")
     bridge = Bridge(offline=offline, read_only=args.read_only or args.capture_check or args.manual_inventory,
-                    manual_inventory=args.manual_inventory, inventory_capture=args.inventory_capture)
+                    manual_inventory=args.manual_inventory, inventory_capture=args.inventory_capture,
+                    task_home=args.task_home)
     validation_directory = None
     if args.smoke_test and bridge._manual_inventory:
         from .inventory import ManualInventory
@@ -159,6 +163,25 @@ def main():
                 time.sleep(0.1)
             else:
                 raise RuntimeError("Vue页面或Python桥接未就绪")
+            home_checked = False
+            if args.task_home:
+                if not window.evaluate_js("Boolean(document.querySelector('[data-testid=task-home]')) && document.querySelector('[data-action=start-task]').disabled"):
+                    raise RuntimeError("离线任务首页未正确禁用设备任务")
+                if args.read_only and not window.evaluate_js("document.querySelector('input[value=inventory]').disabled"):
+                    raise RuntimeError("只读任务首页仍允许选择自动采集")
+                window.evaluate_js("document.querySelector('input[value=review]').click()")
+                deadline = time.monotonic() + 5
+                while window.evaluate_js("document.querySelector('[data-action=start-task]').disabled"):
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError("离线校对入口未启用")
+                    time.sleep(.05)
+                window.evaluate_js("document.querySelector('[data-action=start-task]').click()")
+                deadline = time.monotonic() + 5
+                while window.evaluate_js("Boolean(document.querySelector('[data-testid=task-home]'))"):
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError("任务首页未进入校对")
+                    time.sleep(.05)
+                home_checked = True
             snapshot = window.evaluate_js("""(() => ({
               manual: Boolean(document.querySelector('.inventory-shell')),
               hasCaptureOrImport: Boolean(document.querySelector('[data-action="import-inventory"]') || document.querySelector('[data-action="screenshot"]')),
@@ -170,7 +193,6 @@ def main():
               hasFinish: Boolean(document.querySelector('[data-action="finish-inventory"]')),
               hasReset: Boolean(document.querySelector('[data-action="reset-inventory"]')),
               groupedGallery: document.body.textContent.includes('本次截图组'),
-              automaticEntry: !document.querySelector('[data-action="screenshot"]') || Boolean(document.querySelector('[data-action="auto-inventory"]')?.disabled),
               noGameInput: !document.querySelector('[data-action="click"]') && !document.querySelector('[data-action="swipe"]')
             }))()""" if args.manual_inventory or args.inventory_capture else """(() => ({
               title: document.querySelector('h1').textContent,
@@ -182,8 +204,20 @@ def main():
               offline: document.body.textContent.includes('离线检查')
             }))()""")
             if args.manual_inventory or args.inventory_capture:
+                snapshot['automaticEntry'] = window.evaluate_js(
+                    "Boolean(document.querySelector('[data-action=auto-inventory]')?.disabled)"
+                    if bridge._inventory_automation else
+                    "!document.querySelector('[data-action=auto-inventory]')")
                 if not all(snapshot.values()):
                     raise RuntimeError("背包记录窗口未达到预期：" + json.dumps(snapshot, ensure_ascii=False))
+                if args.inventory_capture:
+                    window.evaluate_js("document.querySelector('.readiness-panel').open = true; document.querySelector('[data-action=check-readiness]').click()")
+                    deadline = time.monotonic() + 5
+                    while not window.evaluate_js("document.querySelectorAll('[data-testid=readiness-check]').length === 2"):
+                        if time.monotonic() >= deadline:
+                            raise RuntimeError("本机准备检查未显示")
+                        time.sleep(.05)
+                    snapshot["localReadiness"] = True
                 if bridge.connect("", "")["ok"] or bridge.screenshot()["ok"] or bridge.click(1, 1)["ok"]:
                     raise RuntimeError("手动记录模式设备禁用核查失败")
                 if bridge.auto_inventory()["ok"]:
@@ -319,6 +353,19 @@ def main():
                         raise RuntimeError("隔离数据重置未完成")
                     time.sleep(.05)
                 snapshot["isolatedReset"] = True
+                if home_checked:
+                    deadline = time.monotonic() + 5
+                    while window.evaluate_js("document.querySelector('[data-action=task-home]').disabled"):
+                        if time.monotonic() >= deadline:
+                            raise RuntimeError("校对完成后首页入口仍不可用")
+                        time.sleep(.05)
+                    window.evaluate_js("document.querySelector('[data-action=task-home]').click()")
+                    deadline = time.monotonic() + 5
+                    while not window.evaluate_js("Boolean(document.querySelector('[data-testid=task-home]'))"):
+                        if time.monotonic() >= deadline:
+                            raise RuntimeError("校对后未返回任务首页")
+                        time.sleep(.05)
+                    snapshot["taskHomeRoundTrip"] = True
             elif not (snapshot["title"] == "百货城小助手" and snapshot["status"] == "未连接"
                     and snapshot["disabled"] and snapshot["hasPreview"] and snapshot["hasStop"] and snapshot["offline"]):
                 raise RuntimeError("离线窗口内容未达到预期：" + json.dumps(snapshot, ensure_ascii=False))

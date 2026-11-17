@@ -172,8 +172,9 @@ class MaaDevice:
         if not self._allow_inventory_swipe:
             raise RuntimeError("当前模式未启用背包自动滑动")
         self._require_connection()
-        if self._last_size != (630, 1120):
-            raise RuntimeError("背包自动操作锁定630×1120，请先取得该尺寸截图")
+        from .bag_geometry import SUPPORTED_SIZES, bag_point_to_device
+        if self._last_size not in SUPPORTED_SIZES:
+            raise RuntimeError("请先取得630×1120或450×800背包截图")
         if direction not in ("up", "down") or type(distance) is not int or not 16 <= distance <= 620:
             raise ValueError("无效背包滑动；距离须为16–620像素")
         path, address, expected = self._capture_target
@@ -182,10 +183,12 @@ class MaaDevice:
             raise RuntimeError("游戏显示屏变化，已停止滑动")
         y1 = 920 if direction == "up" else 300
         y2 = y1 - distance if direction == "up" else y1 + distance
+        x1, y1 = bag_point_to_device(590, y1, self._last_size)
+        x2, y2 = bag_point_to_device(590, y2, self._last_size)
         duration = 1200 if distance >= 40 else 500
         process = token.dispatch(lambda: subprocess.Popen(
             [str(path), "-s", address, "shell", "input", "touchscreen", "-d", logical,
-             "swipe", "590", str(y1), "590", str(y2), str(duration)],
+             "swipe", str(x1), str(y1), str(x2), str(y2), str(duration)],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         ))

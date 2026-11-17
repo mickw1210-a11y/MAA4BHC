@@ -18,10 +18,11 @@ class LocalOcr:
         from PIL import Image
         with Image.open(image_path) as source:
             size = source.size
-        if size != (630, 1120):
-            return [], {"rows": [], "status": "pending", "message": "当前网格仅验证630×1120，已保留截图"}
-        header = self.read(image_path, token, roi=(24, 0, 584, 150))
-        detected = self.read(image_path, token, roi=CONTENT_ROI)
+        from .bag_geometry import SUPPORTED_SIZES
+        if size not in SUPPORTED_SIZES:
+            return [], {"rows": [], "status": "pending", "message": "当前网格支持630×1120和450×800，已保留截图"}
+        header = self.read(image_path, token, roi=(24, 0, 584, 150), bag_layout=True)
+        detected = self.read(image_path, token, roi=CONTENT_ROI, bag_layout=True)
         if not any(value["score"] >= .9 and value["text"].strip() == "背包" for value in header):
             return header + detected, {"rows": [], "status": "pending", "layout_valid": False,
                                        "message": "未确认背包页面，已保留截图；请返回背包后重试"}
@@ -43,8 +44,8 @@ class LocalOcr:
                 quantity_roi = [48 + col * 116, name_top - 39, 88, 34]
                 # Detection + recognition supports a wrapped name. only_rec is
                 # a single-line recognizer and silently loses a second line.
-                name_tokens = self.read(image_path, token, roi=name_roi, scale=3)
-                amount_tokens = self.read(image_path, token, roi=quantity_roi, only_rec=True)
+                name_tokens = self.read(image_path, token, roi=name_roi, scale=3, bag_layout=True)
+                amount_tokens = self.read(image_path, token, roi=quantity_roi, only_rec=True, bag_layout=True)
                 tokens.extend(name_tokens + amount_tokens)
                 name = _cell_name(name_tokens, name_roi)
                 detected_name = _cell_name(detected, name_roi)
@@ -63,7 +64,7 @@ class LocalOcr:
                         "status": "recognized" if named == counted == 25 else "pending",
                         "message": f"本页25格：{named}个名称、{counted}个数量已识别；已按本页位置对齐，仍需核对文字"}
 
-    def read(self, image_path, token, *, roi=None, only_rec=False, scale=None):
+    def read(self, image_path, token, *, roi=None, only_rec=False, scale=None, bag_layout=False):
         import numpy as np
         from PIL import Image
         from maa.controller import CustomController
@@ -90,6 +91,9 @@ class LocalOcr:
                 raise RuntimeError("本地OCR模型加载失败，截图已保留")
             self._resource = resource
         with Image.open(image_path) as source:
+            if bag_layout:
+                from .bag_geometry import normalize_bag_image
+                source = normalize_bag_image(source)
             scale = scale or (3 if only_rec else 1)
             if roi:
                 x, y, width, height = roi

@@ -1,10 +1,13 @@
 import json
+import base64
+import io
 import os
 import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock, patch
+from PIL import Image
 
 from app.bag_capture import BagCollector
 from app.config import ROOT
@@ -64,6 +67,32 @@ class BagCaptureTests(unittest.TestCase):
         with self.assertRaises(OperationCancelled):
             self.collector._move(token, Path("first.png"), "up")
         self.device.swipe_inventory.assert_not_called()
+
+    def test_450_capture_preserves_raw_image_and_locks_round_size(self):
+        content = io.BytesIO()
+        Image.new('RGB', (450, 800), 'white').save(content, format='PNG')
+        self.device.screenshot.return_value = {
+            'width': 450, 'height': 800,
+            'data': 'data:image/png;base64,' + base64.b64encode(content.getvalue()).decode(),
+        }
+        path, _ = self.collector._capture(Token(), 'fixture')
+        self.assertEqual(path.read_bytes(), content.getvalue())
+        self.assertEqual(self.collector.status['screen_size'], [450, 800])
+        self.device.screenshot.return_value = {'width': 630, 'height': 1120}
+        with self.assertRaisesRegex(RuntimeError, '分辨率变化'):
+            self.collector._capture(Token(), 'changed')
+        self.device.swipe_inventory.assert_not_called()
+
+    def test_450_selected_tab_uses_same_reference_geometry(self):
+        image = Image.new('RGB', (630, 1120), 'white')
+        from PIL import ImageDraw
+        ImageDraw.Draw(image).rectangle((24, 100, 199, 149), fill=(230, 170, 70))
+        path = self.root / 'selected-tab.png'
+        image.resize((450, 800), Image.Resampling.LANCZOS).save(path)
+        self.collector.ocr = Mock()
+        self.collector.ocr.read.return_value = [{'score': .99, 'text': '背包'}]
+        BagCollector._assert_bag(self.collector, path, Token())
+        self.assertTrue(self.collector.ocr.read.call_args.kwargs['bag_layout'])
 
     def test_new_active_session_preserves_old_draft_and_csv(self):
         old = ManualInventory(self.root)

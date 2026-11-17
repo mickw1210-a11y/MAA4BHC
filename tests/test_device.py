@@ -104,3 +104,13 @@ class InventorySwipeTests(unittest.TestCase):
             with patch.object(MaaDevice, '_screen_info', return_value=('2', {'changed': True})), patch('app.device.subprocess.Popen') as launch:
                 with self.assertRaises(RuntimeError): device.swipe_inventory('up', 100, self.Token())
                 launch.assert_not_called()
+
+    def test_450_swipe_maps_reference_points_to_device_pixels(self):
+        device = self.device()
+        device._last_size = (450, 800)
+        process = Mock(returncode=0)
+        process.communicate.return_value = (b'', b'')
+        with patch.object(MaaDevice, '_screen_info', return_value=('2', {'fixture': True})), patch('app.device.subprocess.Popen', return_value=process) as launch:
+            device.swipe_inventory('up', 100, self.Token())
+        self.assertEqual(launch.call_args.args[0][-9:],
+                         ['touchscreen', '-d', '2', 'swipe', '421', '657', '421', '586', '1200'])

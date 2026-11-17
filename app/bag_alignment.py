@@ -1,4 +1,4 @@
-"""Local screenshot alignment for the locked 630 x 1120 bag screen.
+"""Local bag alignment using the 630 x 1120 reference coordinate system.
 
 No device access, OCR, file writes or navigation. A failed/ambiguous match is
 never an instruction to continue scrolling or proof that the bag bottom exists.
@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
+from .bag_geometry import normalize_bag_image
 
 
 SCREEN_SIZE = (630, 1120)
@@ -16,10 +17,8 @@ MIN_OVERLAP = 220
 
 def _load(path):
     with Image.open(Path(path)) as image:
-        if image.size != SCREEN_SIZE:
-            raise ValueError("背包对齐仅支持已锁定的630×1120原始截图")
         x, y, width, height = SCROLL_ROI
-        return image.convert("RGB").crop((x, y, x + width, y + height))
+        return normalize_bag_image(image).crop((x, y, x + width, y + height))
 
 
 def _features(image, vertical_scale):
@@ -53,7 +52,7 @@ def _cost(before, after, shift):
 
 
 def estimate_vertical_shift(before_path, after_path):
-    """Return shift in original pixels (positive means content moved upward).
+    """Return shift in 630x1120 reference pixels (positive moves upward).
 
     Result keys: shift (float or None), confidence [0, 1], error (normalized
     weighted pixel error), unchanged, reliable, reason. Diagnostics include
@@ -62,6 +61,9 @@ def estimate_vertical_shift(before_path, after_path):
     must still verify page identity and use repeated settled observations to
     determine a scroll boundary; this function alone cannot prove the bottom.
     """
+    with Image.open(before_path) as before, Image.open(after_path) as after:
+        if before.size != after.size:
+            raise ValueError('采集期间分辨率变化，停止对齐')
     old_image, new_image = _load(before_path), _load(after_path)
     old, new = _features(old_image, 2), _features(new_image, 2)
     texture = min(float(old[1].mean()), float(new[1].mean()))
@@ -71,7 +73,7 @@ def estimate_vertical_shift(before_path, after_path):
     coarse_shift, coarse_error, _ = scored[0]
     competitor = next(value for value in scored if abs(value[0] - coarse_shift) > 6)
     gap = competitor[1] - coarse_error
-    # Refine using original vertical resolution, so odd-pixel movement and
+    # Refine using reference vertical resolution, so odd-pixel movement and
     # cumulative row alignment are not rounded to the downsampled grid.
     full_old, full_new = _features(old_image, 1), _features(new_image, 1)
     refined = [(shift, *_cost(full_old, full_new, shift))

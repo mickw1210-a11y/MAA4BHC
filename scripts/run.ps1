@@ -1,4 +1,4 @@
-﻿param([switch]$Offline, [switch]$SmokeTest, [switch]$ManualInventory, [switch]$ReadOnly, [switch]$InventoryCapture)
+﻿param([switch]$Offline, [switch]$SmokeTest, [switch]$ManualInventory, [switch]$ReadOnly, [switch]$InventoryCapture, [switch]$TaskHome)
 . (Join-Path $PSScriptRoot 'project-env.ps1')
 Set-Location -LiteralPath $ProjectRoot
 $ProjectPython = Join-Path $ProjectRoot '.venv/Scripts/python.exe'
@@ -11,6 +11,7 @@ if ($SmokeTest) { $ProjectArgs += '--smoke-test' }
 if ($ManualInventory) { $ProjectArgs += '--manual-inventory' }
 if ($ReadOnly) { $ProjectArgs += '--read-only' }
 if ($InventoryCapture) { $ProjectArgs += '--inventory-capture' }
+if ($TaskHome) { $ProjectArgs += '--task-home' }
 & $ProjectPython @ProjectArgs
 exit $LASTEXITCODE
 
