@@ -28,15 +28,21 @@ W03-04的跨副本持久诊断与未决动作恢复仍有实现缺口。五款�
 
 已fetch确认远端基线。Git直连github.com超时后，通过本机已有系统HTTPS代理成功fetch，代理仅在本次子进程参数中使用。
 
-原13个待推提交共涉及61个路径，路径与凭据特征初检通过。本次后续提交的文件清单、全部待推历史、Markdown链接及共同规则继续在推送前复核。最终同步结果在完成实际push及远端HEAD核对后补记。
+原13个待推提交共涉及61个路径，路径与凭据特征初检通过。本轮新增3个提交后，全部16个待推提交涉及117个路径，提交历史的新增内容及路径检查通过。
 
 本轮已形成两个源码提交。17fd375保存首页、准备检查、分辨率适配及相关测试，共19文件。f67c392保存Windows设备身份、租约、外部ADB探针及对应测试，共6文件。
 
 仓库作者身份未配置，首次commit命令因此失败。核对HEAD与origin/main中的作者名称及GitHub noreply邮箱一致后，沿用其Mick身份，以单次命令参数完成两个提交。
 
-35份共享Markdown的相对链接检查通过，AGENTS与Workspace_Handoff的共同要求检查退出码0。后续文档及暂存审核通过后形成独立移交提交。
+35份共享Markdown的相对链接检查通过，AGENTS与Workspace_Handoff的共同要求检查退出码0。文档及暂存审核通过后形成23ab070移交提交。
 
 移交文档提交前，暂存清单精确核对为35份Markdown加.gitignore、AGENTS.md和Workspace_Handoff.md，共38文件。UTF-8、代码围栏、相对链接、共同规则和暂存空白检查均通过。6份局部恢复副本SHA-256核对通过，42个新路径有此前不存在记录。暂存内容的凭据特征与个人绝对路径检查无发现。
+
+### 已核实推送结果
+
+git push --porcelain origin main退出码0，远端更新范围为8b25892到23ab070，包含16个提交。随后git ls-remote origin refs/heads/main返回23ab070c305330a787565a70a05b54d8f8f64464，与本地HEAD完整相同。推送时跟踪工作区干净。
+
+本次回执单独提交并推送，最终提交号由实际Git查询确定。Mac拉取后可用git status --short --branch及git rev-list --left-right --count origin/main...HEAD核对本机同步状态。
 
 ## 证据与恢复
 
