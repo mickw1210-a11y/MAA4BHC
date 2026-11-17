@@ -2,6 +2,18 @@
 
 本文件随 Git 跟踪。除下方共同长期要求外，只记录在本 Mac 工作时的决策和关键节点，用简短文字说明；不代写或推断其他设备上的工作结果。记录应可公开，不包含账号、库存、截图、连接地址、凭据或其他私人信息。
 
+## 2026-11-17 跨设备接续入口
+
+用户要求在此提供换机入口。2026-11-17移交成果发生于ASUS Windows，进度与阻碍记于独立交接文档。Mac接续时先读取以下文件，再检查实际Git状态与本机环境。
+
+- [当前进度、功能状态和后续依赖](docs/v04/README.md)
+- [施工说明与验收要求](docs/v04/v04-construction-guidance.md)
+- [任务账本](docs/v04/v04-task-ledger.md)
+- [本次Windows验证与Git同步记录](docs/v04/validation-report.md)
+- [可直接使用的Mac接续Prompt](docs/v04/mac-continuation-prompt.md)
+
+首版产品目标仍为Windows＋MuMu12。Mac可承担代码、公开规则研究和适用的离线验证，Windows租约、实机和最终应用包测试分别留在其适用环境执行。ASUS本机完整交接及私有证据保存在该设备的`.local/`。
+
 <!-- shared-requirements:start -->
 ## 共同长期要求
 
