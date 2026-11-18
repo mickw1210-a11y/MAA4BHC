@@ -39,6 +39,6 @@ app/device_recovery.py 是 W03-04 离线协议原型，不取得 Windows 租约�
 
 11 项通过，覆盖跨副本定位、首次初始化与记录丢失区分、持有者退出／PID复用／状态未知、意图和提交边界写入失败不发送、异常退出后的 not_submitted 与 submitted_unknown、新鲜匹配观察核实、重复检查不重放、错误权威／身份／损坏记录失败关闭，以及项目外路径拒绝。测试没有连接设备、MuMu、ADB 或游戏。
 
-同时运行 tests.test_device_recovery_windows 与 tests.test_device_lease，共 8 项 Windows 专属用例在 Mac 按平台条件跳过。Mac 不能验证 Windows 命名互斥体或目标文件系统行为；目标命令及逐项检查见[Windows 双副本复验清单](w03-04-windows-revalidation.md)。原始控制台日志在本机 .local/logs/w03-04-recovery-offline-20261117.log。
+同时运行 tests.test_device_recovery_windows 与 tests.test_device_lease，共 8 项 Windows 专属用例在 Mac 按平台条件跳过。Mac 不能验证 Windows 命名互斥体或目标文件系统行为；目标命令及逐项检查见[Windows 双副本复验清单](../w03-04-windows-revalidation.md)。原始控制台日志在本机 .local/logs/w03-04-recovery-offline-20261117.log。
 
 当前边界：原型只证明 Python 模拟状态机和本机文件写入协议，不代表它已接入 device_lease.py、Bridge、MaaDevice、开发CLI或真实观察器；单文件恢复也不证明断电、磁盘损坏或回滚安全。目标 Windows 复验前，不解除 W03-04 关口，不接入 W03-07。

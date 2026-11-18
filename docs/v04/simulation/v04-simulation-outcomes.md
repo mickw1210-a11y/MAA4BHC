@@ -25,4 +25,4 @@
 
 本契约不定义任何一款游戏的完成规则，也不证明某个规则枚举器穷尽了合法动作。五款规则版本仍unknown，尚无可运行的游戏模拟或实机结果。
 
-代码：[simulation_outcome.py](../../app/minigames/simulation_outcome.py)；测试：[test_simulation_outcome.py](../../tests/test_simulation_outcome.py)。
+代码：[simulation_outcome.py](../../../app/minigames/simulation_outcome.py)；测试：[test_simulation_outcome.py](../../../tests/test_simulation_outcome.py)。

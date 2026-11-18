@@ -25,4 +25,4 @@
 
 此模块不包含状态枚举、启发式或实际小游戏规则，因此不构成搜索性能或无解证明。五款规则版本仍unknown。
 
-代码：[simulation_search.py](../../app/minigames/simulation_search.py)；测试：[test_simulation_search.py](../../tests/test_simulation_search.py)。
+代码：[simulation_search.py](../../../app/minigames/simulation_search.py)；测试：[test_simulation_search.py](../../../tests/test_simulation_search.py)。

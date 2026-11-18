@@ -26,4 +26,4 @@
 
 代码和测试单独本地提交`d4d97ad`（`Add deterministic simulation baseline strategy`）。修改前恢复点见`.local/history/v04-w11-09-baseline-strategy-20261116-before/manifest.json`。
 
-代码：[baseline_strategy.py](../../app/minigames/baseline_strategy.py)；测试：[test_baseline_strategy.py](../../tests/test_baseline_strategy.py)。
+代码：[baseline_strategy.py](../../../app/minigames/baseline_strategy.py)；测试：[test_baseline_strategy.py](../../../tests/test_baseline_strategy.py)。

@@ -177,7 +177,7 @@
 
 ## 2026-11-17 Luna 连续施工交接
 
-- 用户将本轮完成条件定为 Guidance 与 Prompt 准备到 Luna 可直接连续执行。使用 [Luna 连续施工 Prompt](docs/v04/mac-continuation-prompt.md) 启动，从[设备异常退出与恢复](docs/v04/v04-device-recovery.md)开始。
+- 用户将本轮完成条件定为 Guidance 与 Prompt 准备到 Luna 可直接连续执行。使用 [Luna 连续施工 Prompt](docs/v04/mac-continuation-prompt.md) 启动，从[设备异常退出与恢复](docs/v04/architecture/v04-device-recovery.md)开始。
 - 已补齐跨副本崩溃与未决动作验收用例，明确 Mac 离线与 Windows 复验的界限、规则取证独立分支、账本恢复字段。Guidance 对 W18 的说明统一为可先做离线组合，含小游戏的实机组合需对应 W17 验收。
 - 本次交付为接续文档和启动入口，源码基线沿用上段验证。W03-04 离线原型和 Windows 复验由接续施工完成。
 

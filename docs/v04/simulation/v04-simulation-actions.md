@@ -14,4 +14,4 @@
 
 定向测试7项、完整Python回归372项、纯导入烟测及`git -c core.whitespace=cr-at-eol diff --check`均通过。修改前副本与SHA-256清单：`.local/history/v04-w11-04-legal-actions-20261116-before/manifest.json`。
 
-代码：[simulation_actions.py](../../app/minigames/simulation_actions.py)；规则接口：[simulation_contract.py](../../app/simulation_contract.py)；测试：[test_simulation_actions.py](../../tests/test_simulation_actions.py)。
+代码：[simulation_actions.py](../../../app/minigames/simulation_actions.py)；规则接口：[simulation_contract.py](../../../app/simulation_contract.py)；测试：[test_simulation_actions.py](../../../tests/test_simulation_actions.py)。

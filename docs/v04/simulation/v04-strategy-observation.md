@@ -26,4 +26,4 @@
 
 **限制：**类型系统不能判断适配器提供的值在语义上是否真的可见。若适配器把隐藏牌序、未来随机量或答案放入`visible_fields`，当前通用契约无法识别；因此本项只证明接口形状和不可变容器，不代表五款游戏的数据适配已经通过。
 
-代码：[strategy_observation.py](../../app/minigames/strategy_observation.py)；协议：[strategy_contract.py](../../app/strategy_contract.py)；测试：[test_strategy_observation.py](../../tests/test_strategy_observation.py)。
+代码：[strategy_observation.py](../../../app/minigames/strategy_observation.py)；协议：[strategy_contract.py](../../../app/strategy_contract.py)；测试：[test_strategy_observation.py](../../../tests/test_strategy_observation.py)。

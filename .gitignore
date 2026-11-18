@@ -19,6 +19,12 @@ ui/dist/
 !/docs/v04/minigame-rules/
 /docs/v04/minigame-rules/*
 !/docs/v04/minigame-rules/*.md
+!/docs/v04/architecture/
+/docs/v04/architecture/*
+!/docs/v04/architecture/*.md
+!/docs/v04/simulation/
+/docs/v04/simulation/*
+!/docs/v04/simulation/*.md
 assets/ocr/zh_cn/
 
 # 本地角色数据与导出

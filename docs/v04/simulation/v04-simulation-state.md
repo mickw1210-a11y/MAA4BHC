@@ -18,4 +18,4 @@
 
 W11-03定向回归增加至9项；完整Python回归365项通过。修改前副本与SHA-256清单：`.local/history/v04-w11-03-trial-copy-20261116-before/manifest.json`。
 
-代码：[simulation_state.py](../../app/minigames/simulation_state.py)；接口：[simulation_contract.py](../../app/simulation_contract.py)；测试：[test_simulation_state.py](../../tests/test_simulation_state.py)。
+代码：[simulation_state.py](../../../app/minigames/simulation_state.py)；接口：[simulation_contract.py](../../../app/simulation_contract.py)；测试：[test_simulation_state.py](../../../tests/test_simulation_state.py)。

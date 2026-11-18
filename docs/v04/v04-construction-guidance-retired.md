@@ -14,7 +14,7 @@
 
 本文件由ASUS施工说明整理为可公开的Git跟踪副本。当前进度读[移交概览](README.md)与[任务账本](v04-task-ledger.md)，执行Mac接续时使用[专用Prompt](mac-continuation-prompt.md)。本文“工程起点”与早期Git状态保留编写时日期含义。私人轮换图、日志和恢复副本在ASUS本机开发工棚。
 
-Mac 当前交接从[接续 Prompt](mac-continuation-prompt.md)启动，首个施工入口为[W03-04 恢复方案与验收用例](v04-device-recovery.md)。
+Mac 当前交接从[接续 Prompt](mac-continuation-prompt.md)启动，首个施工入口为[W03-04 恢复方案与验收用例](architecture/v04-device-recovery.md)。
 
 ## 阅读入口
 
@@ -324,7 +324,7 @@ W01找资料不必等五款全部齐备才做W02公共基础。W17按单款开�
 
 ### W03 — 排他、取消与动作记录
 
-前置：W02。读取 `app/worker.py`、`reset.py`、`device.py` 及相关测试。产物：实例级租约与统一动作派发检查。排他是实际能力，不能仅显示提示语。W03-04 的当前入口、可离线验证内容和目标平台验收用例见[设备恢复说明](v04-device-recovery.md)。
+前置：W02。读取 `app/worker.py`、`reset.py`、`device.py` 及相关测试。产物：实例级租约与统一动作派发检查。排他是实际能力，不能仅显示提示语。W03-04 的当前入口、可离线验证内容和目标平台验收用例见[设备恢复说明](architecture/v04-device-recovery.md)。
 
 | ID | 动作 | 通过证据 |
 | --- | --- | --- |

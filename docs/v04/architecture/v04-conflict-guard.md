@@ -18,4 +18,4 @@
 
 当前没有任何入口实际调用此门禁；下游W03-07必须将检查放入统一取消／租约派发边界后才能声称应用内覆盖。即使接线，单次netstat扫描不能排除自定义ADB server、瞬时客户端、其他MuMu控制路径或桌面输入注入。W03-04崩溃恢复缺口也仍阻止安全接入。项目没有声称R12的任意外部软件排他已达标。
 
-代码：[conflict_guard.py](../../app/conflict_guard.py)；离线测试：[test_conflict_guard.py](../../tests/test_conflict_guard.py)。
+代码：[conflict_guard.py](../../../app/conflict_guard.py)；离线测试：[test_conflict_guard.py](../../../tests/test_conflict_guard.py)。

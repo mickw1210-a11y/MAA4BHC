@@ -23,4 +23,4 @@
 
 实现与测试已单独本地提交`1515737`（`Add v0.4 simulation transition outcomes`）。本任务修改前恢复点见`.local/history/v04-w11-05-simulation-effect-20261116-before/manifest.json`。上述检查只证明通用数据契约和隔离导入边界，不证明规则引用对应当前游戏事实；未连接或操作模拟器、未消耗资源、未迁移用户数据。
 
-代码：[simulation_transition.py](../../app/minigames/simulation_transition.py)；接口：[simulation_contract.py](../../app/simulation_contract.py)；测试：[test_simulation_transition.py](../../tests/test_simulation_transition.py)。
+代码：[simulation_transition.py](../../../app/minigames/simulation_transition.py)；接口：[simulation_contract.py](../../../app/simulation_contract.py)；测试：[test_simulation_transition.py](../../../tests/test_simulation_transition.py)。

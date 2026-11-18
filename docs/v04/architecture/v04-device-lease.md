@@ -29,4 +29,4 @@
 
 跨项目副本恢复必须能读取崩溃持有者和未决动作证据。当前持久诊断按项目根保存，无法在项目B访问项目A记录；共享内存随句柄关闭消失。项目规则要求产物留在项目目录，项目外持久存储需另行决定；本轮未写入注册表、用户配置目录或其他项目外位置。因此W03-04保持受阻，且W03-02租约尚不接设备派发。若持有者状态或上次动作结果不明，必须停止，不能以新租约取得成功作为恢复许可。
 
-代码：[device_lease.py](../../app/device_lease.py)；验证：[test_device_lease.py](../../tests/test_device_lease.py)。
+代码：[device_lease.py](../../../app/device_lease.py)；验证：[test_device_lease.py](../../../tests/test_device_lease.py)。

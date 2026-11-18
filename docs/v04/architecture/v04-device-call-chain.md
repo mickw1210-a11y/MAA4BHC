@@ -22,7 +22,7 @@ flowchart LR
   R --> LOCAL[本机配置／草稿／状态；不直接操作游戏]
 ```
 
-UI 的 `act(name, ...)` 动态调用 `window.pywebview.api[name](...)`。背包任务首页当前调用 `inspect_device`、`auto_inventory` 和 `stop`；旧通用页面还暴露 `connect`、`screenshot`、`click`、`swipe`。准备检查 `check_readiness`、轮询 `get_state` 和 `inventory_action` 是本机检查／记录操作，不等于设备命令。
+UI 的 `act(name, ...)` 动态调用 `window.pywebview.api[name](../...)`。背包任务首页当前调用 `inspect_device`、`auto_inventory` 和 `stop`；旧通用页面还暴露 `connect`、`screenshot`、`click`、`swipe`。准备检查 `check_readiness`、轮询 `get_state` 和 `inventory_action` 是本机检查／记录操作，不等于设备命令。
 
 ## 设备入口及实际动作
 
@@ -63,4 +63,4 @@ UI 的 `act(name, ...)` 动态调用 `window.pywebview.api[name](...)`。背包�
 4. 为动作绑定最新页面／状态指纹，提交前写意图，分别记录未提交、提交未知、核实成功和核实失败。
 5. 停止后给 UI 返回准确的“正在停止／已停止／需核实”，对已提交动作先查结果。
 
-源码索引：[App.vue](../../ui/src/App.vue)、[main.py](../../app/main.py)、[bridge.py](../../app/bridge.py)、[worker.py](../../app/worker.py)、[device.py](../../app/device.py)、[bag_capture.py](../../app/bag_capture.py)、[reset.py](../../app/reset.py)。
+源码索引：[App.vue](../../../ui/src/App.vue)、[main.py](../../../app/main.py)、[bridge.py](../../../app/bridge.py)、[worker.py](../../../app/worker.py)、[device.py](../../../app/device.py)、[bag_capture.py](../../../app/bag_capture.py)、[reset.py](../../../app/reset.py)。

@@ -21,4 +21,4 @@
 - Windows可列出TCP端点及PID，但当前资料和探针无法证明某个PID何时会发送游戏动作；进程列表不等于可靠的输入来源证明。没有发现活动连接不能证明设备独占。W03-06还需结合屏幕／页面变化检查；也不能声称阻止任意非协作软件。
 - 本机只读快照：系统相关进程列表中观察到`adb`及多个MuMu组件名；这些名字未映射到目标实例或实际操作。`Get-NetTCPConnection`本次因CIM异常不可用。`netstat -ano -p tcp`的单次快照未观察到远端5037的`ESTABLISHED`客户端；这只代表采样瞬间，没有保留PID／命令行／路径，也不构成无外部控制证明。
 
-代码：[external_operator_probe.py](../../app/external_operator_probe.py)；验证：[test_external_operator_probe.py](../../tests/test_external_operator_probe.py)。
+代码：[external_operator_probe.py](../../../app/external_operator_probe.py)；验证：[test_external_operator_probe.py](../../../tests/test_external_operator_probe.py)。

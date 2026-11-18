@@ -4,7 +4,7 @@
 
 2026-11-17，Mac 将现有项目快进到 GitHub 基线 `744b34d`。源码、测试和既有施工证据来自 ASUS 移交。本机已核对同步后的离线基线，并准备好 Luna 的启动入口。
 
-在 Codex 用现有项目目录选择 Luna，复制[连续施工 Prompt](mac-continuation-prompt.md)。首个工作包是 [W03-04 设备异常退出与恢复](v04-device-recovery.md)，规则取证可独立继续。
+在 Codex 用现有项目目录选择 Luna，复制[连续施工 Prompt](mac-continuation-prompt.md)。首个工作包是 [W03-04 设备异常退出与恢复](architecture/v04-device-recovery.md)，规则取证可独立继续。
 
 ## ASUS 接续
 
@@ -21,6 +21,11 @@
 - [需求映射](v04-requirements-map.md)
 - [ASUS 移交验证与 Git 同步记录](validation-report.md)
 - [五款规则来源及各自规则卡](minigame-rules/README.md)
+
+## 技术资料分类
+
+- [设备、任务与安全边界](architecture/README.md)
+- [小游戏模拟与策略基础](simulation/README.md)
 
 ## 已交接功能
 
@@ -44,7 +49,7 @@ ASUS 移交时，Windows Python 426 项、前端 11 项、构建与两种离线�
 
 2026-11-17 Mac 已完成合成身份、隔离目录与模拟执行器的离线原型和 11 项测试。原型采用显式配置的单一项目内权威目录；写入失败不发送，可能提交但无后置观察时保持未决并禁止重放。目标 Windows 双进程、双副本复验尚未执行，W03-04仍未解除，W03-07—12和W04—W10依赖保持关闭。
 
-具体输入、候选比较、原型边界与退出条件见[设备恢复说明](v04-device-recovery.md)；可直接运行的目标 Windows 命令和验收表见[Windows 双副本复验清单](w03-04-windows-revalidation.md)。
+具体输入、候选比较、原型边界与退出条件见[设备恢复说明](architecture/v04-device-recovery.md)；可直接运行的目标 Windows 命令和验收表见[Windows 双副本复验清单](w03-04-windows-revalidation.md)。
 
 ### 五款规则证据
 

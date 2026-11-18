@@ -18,4 +18,4 @@ MuMu 官方《命令行开发者使用说明》记载 `MuMuManager.exe info --vm
 
 `app/device_identity.py` 是纯数据转换，不启动 MuMuManager、不读取注册表、不运行 ADB、不连接或操作模拟器。定向测试用合成的官方字段形状验证：跨项目／端口／ADB路径同身份、同编号重建后区分、租约键稳定，以及身份字段缺失时失败关闭。该结果只证明离线契约，不证明本机当前 MuMu 版本实际输出与官方示例一致。
 
-实现入口：[device_identity.py](../../app/device_identity.py)；离线验证：[test_device_identity.py](../../tests/test_device_identity.py)。W03-02 将消费 `lease_key` 建立跨项目进程租约；如接入时发现现场字段或生命周期与契约不一致，需先保持身份未知并阻止派发。
+实现入口：[device_identity.py](../../../app/device_identity.py)；离线验证：[test_device_identity.py](../../../tests/test_device_identity.py)。W03-02 将消费 `lease_key` 建立跨项目进程租约；如接入时发现现场字段或生命周期与契约不一致，需先保持身份未知并阻止派发。

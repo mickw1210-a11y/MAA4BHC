@@ -22,4 +22,4 @@
 
 定向测试验证五款白名单、版本unknown、来源字段限制、假设报告序列化与未知／重复ID拒绝。该目录不改变`app.game_capability`中的规则未核实状态，不满足模拟或无辅助道具死局验收，不开放任何真实执行。
 
-代码：[rule_evidence.py](../../app/minigames/rule_evidence.py)；测试：[test_rule_evidence.py](../../tests/test_rule_evidence.py)；研究来源：[五款规则研究索引](minigame-rules/README.md)。
+代码：[rule_evidence.py](../../../app/minigames/rule_evidence.py)；测试：[test_rule_evidence.py](../../../tests/test_rule_evidence.py)；研究来源：[五款规则研究索引](../minigame-rules/README.md)。

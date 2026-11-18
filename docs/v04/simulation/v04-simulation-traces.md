@@ -25,4 +25,4 @@
 
 此格式具备重放所需的数据，但本轮没有可核实的游戏规则引擎，未执行规则重放。完整episode轨迹仅供离线回放／核查；策略输入仍须限制在当前观察接口，不得因轨迹存档而读取未来步骤或隐藏信息。五款游戏规则版本均unknown。
 
-代码：[simulation_trace.py](../../app/minigames/simulation_trace.py)；测试：[test_simulation_trace.py](../../tests/test_simulation_trace.py)。
+代码：[simulation_trace.py](../../../app/minigames/simulation_trace.py)；测试：[test_simulation_trace.py](../../../tests/test_simulation_trace.py)。
