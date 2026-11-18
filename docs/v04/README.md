@@ -1,14 +1,20 @@
 # v0.4 跨设备接续
 
+> 2026-11-18 更新：用户提供的 APK 包含五款活动说明；糖果、汉堡、特调、动物的配置表已定位。详见 [五款规则卡](minigame-rules/README.md)。以下历史阻碍应结合新证据重新评估；没有因此宣布模拟、实机或验收通过。
+
 2026-11-17，Mac 将现有项目快进到 GitHub 基线 `744b34d`。源码、测试和既有施工证据来自 ASUS 移交。本机已核对同步后的离线基线，并准备好 Luna 的启动入口。
 
-在 Codex 用现有项目目录选择 Luna，复制[连续施工 Prompt](mac-continuation-prompt.md)。首个工作包是 [W03-04 设备异常退出与恢复](v04-device-recovery.md)，公开规则取证可以独立继续。
+在 Codex 用现有项目目录选择 Luna，复制[连续施工 Prompt](mac-continuation-prompt.md)。首个工作包是 [W03-04 设备异常退出与恢复](v04-device-recovery.md)，规则取证可独立继续。
+
+## ASUS 接续
+
+目标设备是 Windows＋MuMu，先读取本文件、根 AGENTS 与 Mac 工作记录，再核对本机实际仓库、分支、依赖、私人资料及模拟器状态。Mac 的 CrossOver 兼容性测试不代表 Windows 结果，也不需要安装或迁移 CrossOver。首要未完成关口是 [W03-04 Windows 双进程与双副本复验](w03-04-windows-revalidation.md)；未通过前保持设备派发及依赖工作受阻。小游戏规则、模拟和无死局验收均未完成，游戏操作仍须满足有效授权。
 
 ## 阅读顺序
 
 先读项目根的 AGENTS.md、Workspace_Handoff.md 和本机交接，再从以下文件恢复施工状态。
 
-- [施工 Guidance](v04-construction-guidance.md)
+- [Stage II 施工 Guidance](v04-construction-guidance.md) · [退役原版](v04-construction-guidance-retired.md)
 - [任务账本](v04-task-ledger.md)
 - [需求映射](v04-requirements-map.md)
 - [ASUS 移交验证与 Git 同步记录](validation-report.md)
@@ -40,15 +46,9 @@ ASUS 移交时，Windows Python 426 项、前端 11 项、构建与两种离线�
 
 ### 五款规则证据
 
-| 游戏与稳定ID | 已有证据 | 尚缺 |
-| --- | --- | --- |
-| 糖果派对 candy-party | 用户确认名单，跨游戏二手奖励线索 | 百货城专属规则和连续操作资料 |
-| 烤串大师 skewer-master | 官方宣传称趣味消除，玩家奖励线索 | 操作、状态、容量或遮挡、连锁与结束规则 |
-| 疯狂汉堡日 burger-day | 玩家布局建议、静态单帧、V1抽样至01分34秒 | 动作前后、输入模型、食材等级、合成与移除顺序、倍数成本 |
-| 星光特调 starlight-mix | 玩家布局与静态配图，体力少的定性评论 | 可放位置、混合消除顺序、预览、体力数值与结束条件 |
-| 动物沐场 animal-bath | 玩家报告两只相邻升一级、三只升两级，静态配图 | 当前规则版本、合成位置及优先级、更多数量竞争、连锁、补入与成本 |
+已核对 MuMu 内 APK 1.3.3（133）与热更资源 1.1.163.497。五款均取得活动说明及专属配置，烤串大师通过道具 ID 定位为 `xyxCat`。每款规则、证据文件位置与缺口见[规则研究](minigame-rules/README.md#2026-11-18-mumu-资源复核)。
 
-五款均处于规则研究阶段。W11-08、11、13—18及各款规则实现依赖尚未满足。规则卡逐项列unknown，后续从公开页面和可核验的动作前后画面补证。
+W12-01 的专属说明取证已关闭。当前五款均缺完整转移或成本证据，模拟和真实执行尚待验收。W11 余项按游戏规则、可重放失败样本和观察器各自推进。
 
 ### 后续依赖
 
