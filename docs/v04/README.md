@@ -8,6 +8,8 @@
 
 ## ASUS 接续
 
+[一次性 ASUS 接续 Prompt](asus-continuation-prompt.md)：复制给 ASUS 的 Codex，包含资料导入位置和验证顺序。
+
 目标设备是 Windows＋MuMu，先读取本文件、根 AGENTS 与 Mac 工作记录，再核对本机实际仓库、分支、依赖、私人资料及模拟器状态。Mac 的 CrossOver 兼容性测试不代表 Windows 结果，也不需要安装或迁移 CrossOver。首要未完成关口是 [W03-04 Windows 双进程与双副本复验](w03-04-windows-revalidation.md)；未通过前保持设备派发及依赖工作受阻。小游戏规则、模拟和无死局验收均未完成，游戏操作仍须满足有效授权。
 
 ## 阅读顺序
